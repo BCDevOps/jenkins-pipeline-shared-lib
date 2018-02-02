@@ -1,0 +1,3 @@
+	  mail (to: 'user1@gov.bc.ca,user2@gov.bc.ca',
+           subject: "FYI: Job '${env.JOB_NAME}' (${env.BUILD_NUMBER}) deployed to test", 
+           body: "Changes:\n" + getChangeString() + "\n\nSee ${env.BUILD_URL} for details. ");
