@@ -1,0 +1,3 @@
+  timeout(time: 1, unit: 'DAYS') {
+	  input message: "Deploy to test?", submitter: 'user1,user2'
+  }
