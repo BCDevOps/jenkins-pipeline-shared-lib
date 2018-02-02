@@ -1,0 +1,18 @@
+import groovy.json.JsonOutput
+def notifySlack(text, channel, url, attachments) {
+    def slackURL = url
+    def jenkinsIcon = 'https://wiki.jenkins-ci.org/download/attachments/2916393/logo.png'
+    def payload = JsonOutput.toJson([text: text,
+        channel: channel,
+        username: "Jenkins",
+        icon_url: jenkinsIcon,
+        attachments: attachments
+    ])
+    sh "curl -s -S -X POST --data-urlencode \'payload=${payload}\' ${slackURL}"
+}
+
+node('master') {
+    stage("Post to Slack") {
+        notifySlack("Test Message Posting", "#ci-cd-release-info", "https://hooks.slack.com/services/${SLACK_TOKEN}", [])
+    }
+}
