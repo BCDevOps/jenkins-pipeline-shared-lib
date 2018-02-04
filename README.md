@@ -24,3 +24,6 @@ The vars directory hosts scripts that define global variables accessible from Pi
 
 The Groovy source files in these directories get the same “CPS transformation” as in Scripted Pipeline.
 
+
+Pipeline Steps 
+https://jenkins.io/doc/pipeline/steps/
