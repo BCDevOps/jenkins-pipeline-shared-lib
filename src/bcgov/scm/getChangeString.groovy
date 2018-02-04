@@ -1,4 +1,3 @@
-@NonCPS
 def getChangeString() {
   MAX_MSG_LEN = 512
   def changeString = ""
@@ -16,3 +15,4 @@ def getChangeString() {
   }
   return changeString
 }
+return this
