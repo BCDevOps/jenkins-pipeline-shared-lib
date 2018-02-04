@@ -1,10 +1,11 @@
 import groovy.json.JsonOutput
-def notify(title, text, color, icon, url, channel) {
-    def slackURL = url
+def notify(title, text, color, hookurl, channel) {
+    def jenkinsIcon = 'https://wiki.jenkins-ci.org/download/attachments/2916393/logo.png'
+    def slackURL = hookurl
     def payloadJson = [
         channel: channel,
         username: "Jenkins",
-        icon_url: icon,
+        icon_url: jenkinsIcon,
         attachments: [[
             fallback: text,
             color: color,
