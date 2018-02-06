@@ -1,0 +1,4 @@
+  IMAGE_HASH = sh (
+         script: 'oc get istag <name>:latest -o template --template="{{.image.dockerImageReference}}"|awk -F ":" \'{print $3}\'',
+ 	          returnStdout: true).trim()
+       echo ">> IMAGE_HASH: $IMAGE_HASH"
