@@ -1,0 +1,13 @@
+ // Note: openshiftVerifyDeploy requires policy to be added:
+ // oc policy add-role-to-user view -z system:serviceaccount:<project-prefix>-tools:jenkins -n <project-prefix>-dev
+ // oc policy add-role-to-user view -z system:serviceaccount:<project-prefix>-tools:jenkins -n <project-prefix>-test
+ // oc policy add-role-to-user view -z system:serviceaccount:<project-prefix>-tools:jenkins -n <project-prefix>-prod
+ 
+ 
+ // Documentation:   https://jenkins.io/doc/pipeline/steps/openshift-pipeline/
+ 
+ openshiftVerifyBuild bldCfg: '<bc>', namespace: '<project-prefix>-tools', verbose: 'false', checkForTriggeredDeployments: 'true'
+ openshiftVerifyDeployment depCfg: '<dc-dev>', namespace: '<project-prefix>-dev', replicaCount: 1, verbose: 'false', verifyReplicaCount: 'false'
+ openshiftVerifyService svcName: '<svc>', namespace: '<project-prefix>-dev', verbose: 'false', retryCount: '1'
+ 
+ 
