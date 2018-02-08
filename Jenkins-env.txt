@@ -1,0 +1,8 @@
+JAVA_OPTS
+-XX:MaxMetaspaceSize=512m -Duser.timezone=America/Vancouver -Dhudson.model.DirectoryBrowserSupport.CSP=
+
+Notes:
+-XX:MaxMetaspaceSize=512m  - allows for larger space to accomodate OATH
+-Duser.timezone=America/Vancouver  -  set the timezone to show correct date/time in jenkins-logs
+-Dhudson.model.DirectoryBrowserSupport.CSP=   - allows for pretty print of reports/html/css files
+
