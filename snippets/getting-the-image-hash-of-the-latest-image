@@ -2,3 +2,16 @@
          script: 'oc get istag <name>:latest -o template --template="{{.image.dockerImageReference}}"|awk -F ":" \'{print $3}\'',
  	          returnStdout: true).trim()
        echo ">> IMAGE_HASH: $IMAGE_HASH"
+
+
+
+
+      IMAGE_HASH = sh (
+        script: """oc get istag ${IMAGESTREAM_NAME}:latest -o template --template=\"{{.image.dockerImageReference}}\"|awk -F \":\" \'{print \$3}\'""",
+        returnStdout: true).trim()
+      echo ">> IMAGE_HASH: ${IMAGE_HASH}"
+    }
+    
+    stage('deploy-' + TAG_NAMES[0]) {
+openshiftTag destStream: IMAGESTREAM_NAME, verbose: 'true', destTag: TAG_NAMES[0], srcStream: IMAGESTREAM_NAME, srcTag: "${IMAGE_HASH}"
+}
