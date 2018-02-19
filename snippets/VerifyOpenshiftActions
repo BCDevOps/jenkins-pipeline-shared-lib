@@ -7,6 +7,8 @@
  // Documentation:   https://jenkins.io/doc/pipeline/steps/openshift-pipeline/
  
  openshiftVerifyBuild bldCfg: '<bc>', namespace: '<project-prefix>-tools', verbose: 'false', checkForTriggeredDeployments: 'true'
+ // sleep 5 sec to allow the build to start
+ sleep 5
  openshiftVerifyDeployment depCfg: '<dc-dev>', namespace: '<project-prefix>-dev', replicaCount: 1, verbose: 'false', verifyReplicaCount: 'false'
  openshiftVerifyService svcName: '<svc>', namespace: '<project-prefix>-dev', verbose: 'false', retryCount: '1'
  
