@@ -1,5 +1,5 @@
 import groovy.json.JsonOutput
-def notify(title, text, color, hookurl, channel) {
+def call(title, text, color, hookurl, channel) {
     def jenkinsIcon = 'https://wiki.jenkins-ci.org/download/attachments/2916393/logo.png'
     def slackURL = hookurl
     def payloadJson = [
@@ -22,4 +22,4 @@ def notify(title, text, color, hookurl, channel) {
     sh("curl -s -S -X POST " +
             "--data \'payload=${encodedReq}\' ${slackURL}")
 }
-return this
+// return this
