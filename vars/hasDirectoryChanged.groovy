@@ -1,6 +1,5 @@
 // Checks for new changes to the context directory
-@NonCPS
-boolean hasDirectoryChanged(String contextDirectory) {
+def boolean call(String contextDirectory) {
   // Determine if code has changed within the source context directory.
   def changeLogSets = currentBuild.changeSets
   def filesChangeCnt = 0
