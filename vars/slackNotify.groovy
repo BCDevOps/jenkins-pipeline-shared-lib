@@ -1,5 +1,5 @@
 import groovy.json.JsonOutput
-def call(title, text, color, hookurl, channel) {
+def call(title, text, color, hookurl, channel, actions=[]) {
     def jenkinsIcon = 'https://wiki.jenkins-ci.org/download/attachments/2916393/logo.png'
     def slackURL = hookurl
     def payloadJson = [
@@ -15,7 +15,8 @@ def call(title, text, color, hookurl, channel) {
                     value: text,
                     short: false
                 ]
-            ]
+            ],
+            actions:actions
         ]]
     ]
     def encodedReq = URLEncoder.encode(JsonOutput.toJson(payloadJson), "UTF-8")
