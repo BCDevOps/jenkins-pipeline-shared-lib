@@ -6,11 +6,11 @@ def call(title, text, color, hookurl, channel, actions=[]) {
         channel: channel,
         username: "Jenkins",
         icon_url: jenkinsIcon,
-        author_name: CHANGE_AUTHOR,
+        author_name: env.CHANGE_AUTHOR,
         attachments: [[
             fallback: text,
             color: color,
-            author_name: CHANGE_AUTHOR_DISPLAY_NAME,
+            author_name: env.CHANGE_AUTHOR_DISPLAY_NAME,
             fields: [
                 [
                     title: title,
