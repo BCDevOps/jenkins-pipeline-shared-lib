@@ -19,7 +19,7 @@ def call(title, text, color, hookurl, channel, actions=[]) {
                 ],
                 [
                     title: "Changes",
-                    value: CHANGE_TITLE,
+                    value: env.CHANGE_TITLE,
                     short: false
                 ]
             ],
