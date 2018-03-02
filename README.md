@@ -15,7 +15,6 @@ From there you will want to setup up the library to use git and point it at this
 
 ![Global Pipeline Setup](./docs/global-pipeline-jenkins-setup.png)
 
-> #### NOTE: THE IMAGE ABOVE CURRENTLY POINTS TO MY FORK OF THIS REPO, WHICH SHOULD CHANGE UPON PR
 
 ### Jenkinsfile
 
@@ -52,7 +51,7 @@ if(hasRepoChanged){
         echo "Assembling Runtime: " + RUNTIME_BUILD
         openshiftBuild bldCfg: RUNTIME_BUILD, showBuildLogs: 'true'
       }catch(error){
-        slackNotify(            // <------------------- slackNotify utility from vars/
+        slackNotify(            // <------------------- slackNotify utility from shared lib vars/ folder
           'Build Broken 🤕',
           "The latest ${APP_NAME} build seems to have broken\n'${error.message}'",
           'danger',
