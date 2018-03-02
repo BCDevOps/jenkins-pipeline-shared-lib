@@ -29,4 +29,3 @@ def call(title, text, color, hookurl, channel, actions=[]) {
     sh("curl -s -S -X POST " +
             "--data \'payload=${encodedReq}\' ${slackURL}")
 }
-// return this
