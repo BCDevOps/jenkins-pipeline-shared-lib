@@ -8,9 +8,10 @@ https://jenkins.io/doc/book/pipeline/shared-libraries/
 
 ### Jenkins
 
-You must add the shared library into the configuration for Jenkins.  This can be found in **Manage Jenkins->Configure System->Global Pipeline Libraries**:
+You must add the shared library into the configuration for Jenkins.  
+This can be found in **Manage Jenkins->Configure System->Global Pipeline Libraries**:
 
-Fomr there you will want to setup up the library to use git and point it at this repository:
+From there you will want to setup up the library to use git and point it at this repository:
 
 ![Global Pipeline Setup](./docs/global-pipeline-jenkins-setup.png)
 
