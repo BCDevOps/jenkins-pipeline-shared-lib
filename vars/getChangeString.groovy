@@ -1,4 +1,4 @@
-def getChangeString() {
+def String call() {
   MAX_MSG_LEN = 512
   def changeString = ""
   def changeLogSets = currentBuild.changeSets
