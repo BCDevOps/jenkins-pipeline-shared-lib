@@ -1,3 +1,6 @@
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
+
 # jenkins-pipeline-shared-lib
 Extending Jenkins with a Shared Library
 
