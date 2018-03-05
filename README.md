@@ -5,6 +5,8 @@
 Extending Jenkins with a Shared Library
 
 https://jenkins.io/doc/book/pipeline/shared-libraries/
+https://jenkins.io/blog/2017/10/02/pipeline-templates-with-shared-libraries/
+
 
 
 ## Project Setup
