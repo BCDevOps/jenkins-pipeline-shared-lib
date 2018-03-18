@@ -26,6 +26,18 @@ From there you will want to setup up the library to use git and point it at this
 
 ![Global Pipeline Setup](./docs/global-pipeline-jenkins-setup.png)
 
+Then use the library in your Jenkinsfile.
+
+Example:
+```
+@Library('devops-library') _
+
+stage('testing lib') {
+    def TIMESTAMP = getTimeStamp();
+    echo "${TIMESTAMP}"
+}
+```
+
 2.) 
 
 Define the library location at the top of the Jenkisfile. 
@@ -50,7 +62,12 @@ stage('testing lib') {
 Once you have your shared library setup, you can now use the utilities within your `Jenkinsfile` like so:
 
 ```groovy
-@Library('devops-library') _
+
+// @Library('devops-library') _
+
+library identifier: 'devops-library@master', retriever: modernSCM(
+  [$class: 'GitSCMSource',
+   remote: 'https://github.com/BCDevOps/jenkins-pipeline-shared-lib.git'])
 
 def hasRepoChanged = false;
 node{
