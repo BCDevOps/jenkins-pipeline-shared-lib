@@ -34,14 +34,14 @@ This does not require any global Jenkins configurartion changes.
 Example:
 
 ```
-+library identifier: 'devops-library@master', retriever: modernSCM(
-+  [$class: 'GitSCMSource',
-+   remote: 'https://github.com/BCDevOps/jenkins-pipeline-shared-lib.git'])
-+   
-+stage('testing lib') {
-+    def TIMESTAMP = getTimeStamp();
-+    echo "${TIMESTAMP}"
-+}
+library identifier: 'devops-library@master', retriever: modernSCM(
+  [$class: 'GitSCMSource',
+   remote: 'https://github.com/BCDevOps/jenkins-pipeline-shared-lib.git'])
+
+stage('testing lib') {
+    def TIMESTAMP = getTimeStamp();
+    echo "${TIMESTAMP}"
+}
 ```
 
 
