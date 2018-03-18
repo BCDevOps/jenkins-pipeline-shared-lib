@@ -13,12 +13,36 @@ References:
 
 ### Jenkins
 
-You must add the shared library into the configuration for Jenkins.  
+Accessing shared libaries from within your Jenkinsfile.
+
+Two Optios:
+
+1.)
+
+You can add the shared library into the configuration for Jenkins.  
 This can be found in **Manage Jenkins->Configure System->Global Pipeline Libraries**:
 
 From there you will want to setup up the library to use git and point it at this repository:
 
 ![Global Pipeline Setup](./docs/global-pipeline-jenkins-setup.png)
+
+2.) 
+
+Define the library location at the top of the Jenkisfile. 
+This does not require any global Jenkins configurartion changes.
+
+Example:
+
+```
++library identifier: 'devops-library@master', retriever: modernSCM(
++  [$class: 'GitSCMSource',
++   remote: 'https://github.com/BCDevOps/jenkins-pipeline-shared-lib.git'])
++   
++stage('testing lib') {
++    def TIMESTAMP = getTimeStamp();
++    echo "${TIMESTAMP}"
++}
+```
 
 
 ### Jenkinsfile
