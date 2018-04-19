@@ -439,7 +439,7 @@ class OpenShiftHelper {
                             Map m=newObjects[key(item)]
                             String newestCommit=m.metadata.annotations['spec.source.git.ref']
                             String oldestCommit=lastBuild.spec.revision.git.commit
-                            if (!newestCommit.equalsIgnoreCase(oldestCommit)) {
+                            if (newestCommit!=null && !newestCommit.equalsIgnoreCase(oldestCommit)) {
                                 if (context.isPullRequestFromFork) {
                                     //git rev-list [newer] ^[older] --count
                                     int distance = Integer.parseInt(script.sh(returnStdout: true, script: "git rev-list ${newestCommit} ^${oldestCommit} --count").trim())
