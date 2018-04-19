@@ -355,6 +355,8 @@ class OpenShiftHelper {
         script.echo "absoluteUrl=${script.currentBuild.absoluteUrl}"
 
         script.sh(returnStdout: false, script: "git log --pretty=oneline -20")
+        script.sh(returnStdout: false, script: "git rev-list -20 HEAD")
+
 
         loadMetadata(script, context)
 
