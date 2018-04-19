@@ -22,8 +22,7 @@ class OpenShiftHelper {
 
 
         if (metadata.isPullRequest){
-            def pullRequest=GitHubHelper.getPullRequest(script)
-            metadata.isPullRequestFromFork = !pullRequest.getRepository().getFullName().equalsIgnoreCase(pullRequest.getHead().getRepository().getFullName())
+            loadPullRequestMetadata(metadata, GitHubHelper.getPullRequest(script))
             metadata.pullRequestNumber=script.env.CHANGE_ID
             metadata.gitBranchRemoteRef = script.sh(returnStdout: true, script: "git ls-remote origin 'refs/pull/${script.env.CHANGE_ID}/*' | grep '${metadata.commitId}' | cut -f2").trim()
             metadata.buildEnvName="pr-${metadata.pullRequestNumber}"
@@ -44,7 +43,10 @@ class OpenShiftHelper {
     private boolean allowCreateOrUpdate(Map newModel, Map currentModel) {
         return (currentModel==null && allowCreate(newModel)) || (currentModel!=null  && allowUpdate(newModel))
     }
-
+    @NonCPS
+    private static void loadPullRequestMetadata(Map metadata, org.kohsuke.github.GHPullRequest pullRequest) {
+        metadata.isPullRequestFromFork = !pullRequest.getRepository().getFullName().equalsIgnoreCase(pullRequest.getHead().getRepository().getFullName())
+    }
     @NonCPS
     private static String toJsonString(Object object) {
         return groovy.json.JsonOutput.toJson(object)
