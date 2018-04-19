@@ -387,21 +387,23 @@ class OpenShiftHelper {
                             contextDir=contextDir.substring(1)
                         }
 
-                        if (contextDir!=null){
-                            commitId=script.sh(returnStdout: true, script: "git rev-list -1 HEAD -- '${contextDir}'").trim()
-                        }
                         if (!m.metadata.annotations) m.metadata.annotations=[:]
-                        if (m.spec.source.git.ref) m.metadata.annotations['source/spec.source.git.ref']=m.spec.source.git.ref
-
-                        m.metadata.annotations['spec.source.git.ref']=commitId
-                        if (context.isPullRequestFromFork) {
-                            m.spec.source.git.ref=context.gitBranchRemoteRef
-                        }else{
-                            m.spec.source.git.ref=commitId
+                        
+                        if (m.spec.source.git.uri.equalsIgnoreCase(context.gitRepoUrl)){
+                            if (contextDir!=null){
+                                commitId=script.sh(returnStdout: true, script: "git rev-list -1 HEAD -- '${contextDir}'").trim()
+                            }
+                            if (m.spec.source.git.ref) m.metadata.annotations['source/spec.source.git.ref']=m.spec.source.git.ref
+                            m.metadata.annotations['spec.source.git.ref']=commitId
+                            if (context.isPullRequestFromFork) {
+                                m.spec.source.git.ref=context.gitBranchRemoteRef
+                            }else{
+                                m.spec.source.git.ref=commitId
+                            }
                         }
 
                         m.spec.runPolicy = 'SerialLatestOnly'
-                        script.echo "${key(m)} - ${contextDir?:'/'} @ ${m.spec.source.git.ref}  (${commitId})"
+                        script.echo "${key(m)} - ${m.spec.source.git.uri} - ${m?.spec?.source?.contextDir?:'/'} @ ${m.spec.source.git.ref}  (${commitId})"
                     }
                 }
 
