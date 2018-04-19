@@ -19,7 +19,7 @@ class OpenShiftHelper {
         metadata.buildBranchName = script.env.BRANCH_NAME;
         metadata.buildEnvName = 'bld'
         metadata.buildNamePrefix = "${metadata.appName}"
-
+        metadata.isPullRequestFromFork = false
 
         if (metadata.isPullRequest){
             loadPullRequestMetadata(metadata, GitHubHelper.getPullRequest(script))
@@ -32,11 +32,11 @@ class OpenShiftHelper {
     }
 
     private boolean allowCreate(Map newModel) {
-        return !PROTECTED_TYPES.contains(newModel.kind) || Boolean.parseBoolean(newModel.metadata?.annotations[ANNOTATION_ALLOW_CREATE]?:'false')==true
+        return !PROTECTED_TYPES.contains(newModel.kind) || Boolean.parseBoolean((newModel.metadata?.annotations?:[:])[ANNOTATION_ALLOW_CREATE]?:'false')==true
     }
 
     private boolean allowUpdate(Map newModel) {
-        return !PROTECTED_TYPES.contains(newModel.kind) || Boolean.parseBoolean(newModel.metadata?.annotations[ANNOTATION_ALLOW_UPDATE]?:'false')==true
+        return !PROTECTED_TYPES.contains(newModel.kind) || Boolean.parseBoolean((newModel.metadata?.annotations?:[:])[ANNOTATION_ALLOW_UPDATE]?:'false')==true
     }
 
     private boolean allowCreateOrUpdate(Map newModel, Map currentModel) {
