@@ -524,7 +524,7 @@ class OpenShiftHelper {
                 creations.add(o)
             }else{
                 if (!'ImageStream'.equalsIgnoreCase("${o.kind}")){
-                    script.echo "Skipping '${key(o)}'"
+                    //script.echo "Skipping '${key(o)}'"
                     //updates.add(o)
                     patches.add(o)
                 }else{
@@ -544,6 +544,12 @@ class OpenShiftHelper {
             script.echo "Creating ${creations.size()} objects"
             openshift.apply(creations);
         }
+        
+        if (patches.size()>0){
+            script.echo "Updating ${patches.size()} objects"
+            openshift.apply(patches);
+        }
+        
         if (updates.size()>0){
             script.echo "Updating ${updates.size()} objects"
             openshift.apply(updates);
