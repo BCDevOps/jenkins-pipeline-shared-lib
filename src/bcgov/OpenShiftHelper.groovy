@@ -26,7 +26,6 @@ class OpenShiftHelper {
             metadata.pullRequestNumber=script.env.CHANGE_ID
             metadata.gitBranchRemoteRef = script.sh(returnStdout: true, script: "git ls-remote origin 'refs/pull/${script.env.CHANGE_ID}/*' | grep '${metadata.commitId}' | cut -f2").trim()
             metadata.buildEnvName="pr-${metadata.pullRequestNumber}"
-            pullRequest=null
         }
 
         metadata.buildNameSuffix = "-${metadata.buildEnvName}"
