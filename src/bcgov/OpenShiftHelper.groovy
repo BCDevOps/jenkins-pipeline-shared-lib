@@ -394,8 +394,12 @@ class OpenShiftHelper {
                         if (m.spec.source.git.ref) m.metadata.annotations['source/spec.source.git.ref']=m.spec.source.git.ref
 
                         m.metadata.annotations['spec.source.git.ref']=commitId
-                        //m.spec.source.git.ref=commitId
-                        m.spec.source.git.ref=context.gitBranchRemoteRef
+                        if (context.isPullRequestFromFork) {
+                            m.spec.source.git.ref=context.gitBranchRemoteRef
+                        }else{
+                            m.spec.source.git.ref=commitId
+                        }
+
                         m.spec.runPolicy = 'SerialLatestOnly'
                         script.echo "${key(m)} - ${contextDir?:'/'} @ ${m.spec.source.git.ref}  (${commitId})"
                     }
@@ -431,13 +435,15 @@ class OpenShiftHelper {
                             String newestCommit=m.metadata.annotations['spec.source.git.ref']
                             String oldestCommit=lastBuild.spec.revision.git.commit
                             if (!newestCommit.equalsIgnoreCase(oldestCommit)) {
-                                //git rev-list [newer] ^[older] --count
-                                int distance = Integer.parseInt(script.sh(returnStdout: true, script: "git rev-list ${newestCommit} ^${oldestCommit} --count").trim())
-                                script.echo "${distance} commits between ${oldestCommit} (oldest)  and ${newestCommit} (newest)"
-                                if (distance > 0) {
-                                    script.echo "   Starting a new build because the last one (${key(lastBuild)}) was outdated"
-                                    newBuild=openshift.selector(key(item)).startBuild()
-                                    startedNewBuilds = true
+                                if (context.isPullRequestFromFork) {
+                                    //git rev-list [newer] ^[older] --count
+                                    int distance = Integer.parseInt(script.sh(returnStdout: true, script: "git rev-list ${newestCommit} ^${oldestCommit} --count").trim())
+                                    script.echo "${distance} commits between ${oldestCommit} (oldest)  and ${newestCommit} (newest)"
+                                    if (distance > 0) {
+                                        script.echo "   Starting a new build because the last one (${key(lastBuild)}) was outdated"
+                                        newBuild = openshift.selector(key(item)).startBuild()
+                                        startedNewBuilds = true
+                                    }
                                 }
                             }
                             //git rev-list e71492589b94239576a6397997c29e6cb5b55fc8 ^e71492589b94239576a6397997c29e6cb5b55fc8 --count
