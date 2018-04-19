@@ -22,9 +22,12 @@ class OpenShiftHelper {
 
 
         if (metadata.isPullRequest){
+            def pullRequest=GitHubHelper.getPullRequest(script)
+            metadata.isPullRequestFromFork = !pullRequest.getRepository().getFullName().equalsIgnoreCase(pullRequest.getHead().getRepository().getFullName())
             metadata.pullRequestNumber=script.env.CHANGE_ID
             metadata.gitBranchRemoteRef = script.sh(returnStdout: true, script: "git ls-remote origin 'refs/pull/${script.env.CHANGE_ID}/*' | grep '${metadata.commitId}' | cut -f2").trim()
             metadata.buildEnvName="pr-${metadata.pullRequestNumber}"
+            pullRequest=null
         }
 
         metadata.buildNameSuffix = "-${metadata.buildEnvName}"
@@ -349,6 +352,8 @@ class OpenShiftHelper {
 
         script.echo "BRANCH_NAME=${script.env.BRANCH_NAME}\nCHANGE_ID=${script.env.CHANGE_ID}\nCHANGE_TARGET=${script.env.CHANGE_TARGET}\nBUILD_URL=${script.env.BUILD_URL}"
         script.echo "absoluteUrl=${script.currentBuild.absoluteUrl}"
+
+        script.sh(returnStdout: false, script: "git log --pretty=oneline -20")
 
         loadMetadata(script, context)
 
