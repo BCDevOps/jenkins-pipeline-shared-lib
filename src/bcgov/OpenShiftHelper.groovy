@@ -400,6 +400,9 @@ class OpenShiftHelper {
                             }else{
                                 m.spec.source.git.ref=commitId
                             }
+                        }else{
+                            commitId=script.sh(returnStdout: true, script: "git ls-remote ${m.spec.source.git.uri} ${m.spec.source.git.ref} | cut -f1").trim()
+                            m.spec.source.git.ref=commitId
                         }
 
                         m.spec.runPolicy = 'SerialLatestOnly'
