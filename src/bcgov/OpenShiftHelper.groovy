@@ -2,6 +2,7 @@ package bcgov;
 
 import org.jenkinsci.plugins.workflow.cps.CpsScript;
 import com.openshift.jenkins.plugins.OpenShiftDSL;
+import org.kohsuke.github.GHRepository
 
 class OpenShiftHelper {
     int logLevel=0
@@ -11,6 +12,12 @@ class OpenShiftHelper {
     static String ANNOTATION_ALLOW_CREATE='template.openshift.io.bcgov/create'
     static String ANNOTATION_ALLOW_UPDATE='template.openshift.io.bcgov/update'
 
+    @NonCPS
+    private String getLastSha1InPath(GHRepository reposity, String head, String path) {
+        if (path==null || path.length() == 0 ) return head
+        return repository.queryCommits().pageSize(1).from(head).path(path).list().iterator().next().getSHA1();
+    }
+    
     private void loadMetadata(CpsScript script, Map metadata) {
         metadata.commitId = script.sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
         metadata.isPullRequest=(script.env.CHANGE_ID != null && script.env.CHANGE_ID.trim().length()>0)
