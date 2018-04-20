@@ -897,9 +897,9 @@ class OpenShiftHelper {
         openshift.selector('route', labels).withEach {
             Map route= it.object()
             if (route.spec.tls){
-                deployCtx['environmentUrl']= "https://${route.spec.host}/"
+                deployCtx['environmentUrl']= "https://${route.spec.host}${route.spec.path?:'/'}"
             }else{
-                deployCtx['environmentUrl']= "http://${route.spec.host}/"
+                deployCtx['environmentUrl']= "http://${route.spec.host}${route.spec.path?:'/'}"
             }
         }
 
