@@ -14,7 +14,7 @@ class OpenShiftHelper {
 
     @NonCPS
     private String getLastSha1InPath(String gitURL, String head, String path) {
-        if (path==null || path.length() == 0 ) return head
+        //if (path==null || path.length() == 0 ) return head
         GHRepository repository=GitHubHelper.getGitHubRepository(gitURL)
         return repository.queryCommits().pageSize(1).from(head).path(path).list().iterator().next().getSHA1();
     }
@@ -396,6 +396,7 @@ class OpenShiftHelper {
                         }
 
                         if (!m.metadata.annotations) m.metadata.annotations=[:]
+                        if (!m.metadata.labels) m.metadata.labels=[:]
                         
                         if (contextDir!=null){
                             String sha1=getLastSha1InPath(m.spec.source.git.uri, context.commitId, contextDir)
@@ -403,23 +404,29 @@ class OpenShiftHelper {
                         }
                         
                         if (m.spec.source.git.uri.equalsIgnoreCase(context.gitRepoUrl)){
-                            if (contextDir!=null){
-                                commitId=script.sh(returnStdout: true, script: "git rev-list -1 HEAD -- '${contextDir}'").trim()
-                            }
+                            commitId=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, contextDir)
                             if (m.spec.source.git.ref) m.metadata.annotations['source/spec.source.git.ref']=m.spec.source.git.ref
-                            m.metadata.annotations['spec.source.git.ref']=commitId
+                            m.metadata.annotations['source.git.ref']=context.gitBranchRemoteRef
+                            m.metadata.annotations['source.git.head']=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, '')
+                            m.metadata.annotations['source.git.commit']=commitId
+                            m.spec.source.git.ref=commitId
                             if (context.isPullRequestFromFork) {
-                                m.spec.source.git.ref=context.gitBranchRemoteRef
-                            }else{
-                                m.spec.source.git.ref=commitId
+                                m.spec.source.git.ref=m.metadata.annotations['source.git.head']
                             }
                         }else{
-                            commitId=script.sh(returnStdout: true, script: "git ls-remote ${m.spec.source.git.uri} ${m.spec.source.git.ref} | cut -f1").trim()
+                            commitId=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, contextDir)
+                            m.metadata.annotations['source.git.ref']=m.spec.source.git.ref
+                            m.metadata.annotations['source.git.head']=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, '')
+                            m.metadata.annotations['source.git.commit']=commitId
                             m.spec.source.git.ref=commitId
                         }
-
+                        
+                        //m.metadata.labels['git-ref']=m.metadata.annotations['source.git.ref']
+                        m.metadata.labels['git-commit']=m.metadata.annotations['source.git.commit']
+                        //m.spec.source.git.ref=m.metadata.annotations['source.git.commit']
+                        
                         m.spec.runPolicy = 'SerialLatestOnly'
-                        script.echo "${key(m)} - ${m.spec.source.git.uri} - ${m?.spec?.source?.contextDir?:'/'} @ ${m.spec.source.git.ref}  (${commitId})"
+                        script.echo "${key(m)} - ${m.spec.source.git.uri}#${m.metadata.annotations['source.git.ref']} @ ${m.metadata.annotations['source.git.head']} - /${m?.spec?.source?.contextDir?:''} @ ${m.metadata.annotations['source.git.commit']}"
                     }
                 }
 
