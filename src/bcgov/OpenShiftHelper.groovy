@@ -421,6 +421,7 @@ class OpenShiftHelper {
                         //m.spec.source.git.ref=m.metadata.annotations['source.git.commit']
                         
                         m.spec.runPolicy = 'SerialLatestOnly'
+                        m.spec.output.to.name=m.spec.output.to.name.tokenize(':')[0]+':'+context.buildEnvName
                         script.echo "${key(m)} - ${m.spec.source.git.uri}#${m.metadata.annotations['source.git.ref']} @ ${m.metadata.annotations['source.git.head']} - /${m?.spec?.source?.contextDir?:''} @ ${m.metadata.annotations['source.git.commit']}"
                     }
                 }
@@ -857,7 +858,7 @@ class OpenShiftHelper {
         for (Map m : upserts) {
             String sourceImageStreamKey=context.build.status["BaseImageStream/${getImageStreamBaseName(m)}"]['ImageStream']
             Map sourceImageStream = context.build.status[sourceImageStreamKey]
-            String sourceImageStreamRef="${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}:latest"
+            String sourceImageStreamRef="${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}:${context.buildEnvName}"
             String targetImageStreamRef="${m.metadata.name}:${labels['env-name']}"
 
             script.echo "Tagging '${sourceImageStreamRef}' as '${targetImageStreamRef}'"
