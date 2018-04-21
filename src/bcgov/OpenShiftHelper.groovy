@@ -15,7 +15,7 @@ class OpenShiftHelper {
     @NonCPS
     private String getLastSha1InPath(String gitURL, String head, String path) {
         if (path==null || path.length() == 0 ) return head
-        GHRepository reposity=GitHubHelper.getGitHubRepository(gitURL)
+        GHRepository repository=GitHubHelper.getGitHubRepository(gitURL)
         return repository.queryCommits().pageSize(1).from(head).path(path).list().iterator().next().getSHA1();
     }
     
@@ -399,7 +399,7 @@ class OpenShiftHelper {
                         
                         if (contextDir!=null){
                             String sha1=getLastSha1InPath(m.spec.source.git.uri, context.commitId, contextDir)
-                            script.echo "${m.spec.source.git.uri} - '${contextDir}' @ ${m.spec.source.git.ref}  (${sha1})"
+                            script.echo "${m.spec.source.git.uri} - '${contextDir}' @ ${m.spec.source.git.ref}  last:${sha1}  head:${context.commitId}"
                         }
                         
                         if (m.spec.source.git.uri.equalsIgnoreCase(context.gitRepoUrl)){
