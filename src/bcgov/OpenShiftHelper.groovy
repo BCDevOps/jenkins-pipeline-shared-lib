@@ -13,8 +13,9 @@ class OpenShiftHelper {
     static String ANNOTATION_ALLOW_UPDATE='template.openshift.io.bcgov/update'
 
     @NonCPS
-    private String getLastSha1InPath(GHRepository reposity, String head, String path) {
+    private String getLastSha1InPath(String gitURL, String head, String path) {
         if (path==null || path.length() == 0 ) return head
+        GHRepository reposity=GitHubHelper.getGitHubRepository(gitURL)
         return repository.queryCommits().pageSize(1).from(head).path(path).list().iterator().next().getSHA1();
     }
     
@@ -395,6 +396,11 @@ class OpenShiftHelper {
                         }
 
                         if (!m.metadata.annotations) m.metadata.annotations=[:]
+                        
+                        if (contextDir!=null){
+                            String sha1=getLastSha1InPath(m.spec.source.git.uri, context.commitId, contextDir)
+                            script.echo "${m.spec.source.git.uri} - '${contextDir}' @ ${m.spec.source.git.ref}  (${sha1})"
+                        }
                         
                         if (m.spec.source.git.uri.equalsIgnoreCase(context.gitRepoUrl)){
                             if (contextDir!=null){
