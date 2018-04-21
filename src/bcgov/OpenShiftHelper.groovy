@@ -398,13 +398,8 @@ class OpenShiftHelper {
                         if (!m.metadata.annotations) m.metadata.annotations=[:]
                         if (!m.metadata.labels) m.metadata.labels=[:]
                         
-                        if (contextDir!=null){
-                            String sha1=getLastSha1InPath(m.spec.source.git.uri, context.commitId, contextDir)
-                            script.echo "${m.spec.source.git.uri} - '${contextDir}' @ ${m.spec.source.git.ref}  last:${sha1}  head:${context.commitId}"
-                        }
-                        
                         if (m.spec.source.git.uri.equalsIgnoreCase(context.gitRepoUrl)){
-                            commitId=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, contextDir)
+                            commitId=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, contextDir?:'')
                             if (m.spec.source.git.ref) m.metadata.annotations['source/spec.source.git.ref']=m.spec.source.git.ref
                             m.metadata.annotations['source.git.ref']=context.gitBranchRemoteRef
                             m.metadata.annotations['source.git.head']=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, '')
@@ -414,7 +409,7 @@ class OpenShiftHelper {
                                 m.spec.source.git.ref=m.metadata.annotations['source.git.head']
                             }
                         }else{
-                            commitId=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, contextDir)
+                            commitId=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, contextDir?:'')
                             m.metadata.annotations['source.git.ref']=m.spec.source.git.ref
                             m.metadata.annotations['source.git.head']=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, '')
                             m.metadata.annotations['source.git.commit']=commitId
