@@ -515,7 +515,10 @@ class OpenShiftHelper {
 
                 openshift.selector( 'is', labels).withEach {
                     def iso=it.object()
-
+                    script.echo "is --> ${iso}"
+                    def tags=iso.status.tags[labels['env-name']]
+                    script.echo "is.status.tags --> ${tags}"
+                    
                     buildOutput["${key(iso)}"] = [
                             'kind': iso.kind,
                             'metadata': ['name':iso.metadata.name, 'namespace':iso.metadata.namespace],
@@ -523,7 +526,7 @@ class OpenShiftHelper {
                             'status':[
                                 'tags':[
                                     (labels['env-name']):[
-                                        'items':['image':iso.status.tags[labels['env-name']].items[0].image]
+                                        'items':['image':tags.items[0].image]
                                     ]
                                 ]
                             ]
