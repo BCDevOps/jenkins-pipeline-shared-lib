@@ -522,7 +522,7 @@ class OpenShiftHelper {
                             'labels':iso.metadata.labels,
                             'status':[
                                 'tags':[
-                                    labels['env-name']:[
+                                    (labels['env-name']):[
                                         ['image':iso.status.tags[labels['env-name']][0].image]
                                     ]
                                 ]
