@@ -523,7 +523,7 @@ class OpenShiftHelper {
                             'status':[
                                 'tags':[
                                     (labels['env-name']):[
-                                        ['image':iso.status.tags[labels['env-name']][0].image]
+                                        'items':['image':iso.status.tags[labels['env-name']].items[0].image]
                                     ]
                                 ]
                             ]
@@ -867,7 +867,7 @@ class OpenShiftHelper {
         for (Map m : upserts) {
             String sourceImageStreamKey=context.build.status["BaseImageStream/${getImageStreamBaseName(m)}"]['ImageStream']
             Map sourceImageStream = context.build.status[sourceImageStreamKey]
-            String sourceImage=sourceImageStream.status.tags[context.buildEnvName][0].image
+            String sourceImage=sourceImageStream.status.tags[context.buildEnvName].items[0].image
             String sourceImageStreamRef="${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}"
             String targetImageStreamRef="${m.metadata.name}:${labels['env-name']}"
 
