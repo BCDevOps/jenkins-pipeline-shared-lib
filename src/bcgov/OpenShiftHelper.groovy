@@ -515,14 +515,14 @@ class OpenShiftHelper {
 
                 openshift.selector( 'is', labels).withEach {
                     def iso=it.object()
-                    script.echo "is --> ${iso}"
+                    //script.echo "is --> ${iso}"
                     def tags=[:]
                     for (Map tag:iso.status.tags){
                         tags[tag.tag]=[
                             'items':[tag.items[0]]
                         ]
                     }
-                    script.echo "is.status.tags --> ${tags}"
+                    //script.echo "is.status.tags --> ${tags}"
                     
                     buildOutput["${key(iso)}"] = [
                             'kind': iso.kind,
