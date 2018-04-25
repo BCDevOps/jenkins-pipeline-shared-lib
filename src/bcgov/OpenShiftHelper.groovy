@@ -519,7 +519,7 @@ class OpenShiftHelper {
                     def tags=[:]
                     for (Map tag:iso.status.tags){
                         tags[tag.tag]=[
-                            'items':[['image':tag.items[0].image]]
+                            'items':[tag.items[0]]
                         ]
                     }
                     script.echo "is.status.tags --> ${tags}"
