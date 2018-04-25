@@ -518,7 +518,9 @@ class OpenShiftHelper {
                     script.echo "is --> ${iso}"
                     def tags=[:]
                     for (Map tag:iso.status.tags){
-                        tags[tag.tag]=tag
+                        tags[tag.tag]=[
+                            'items':[['image':tag.items[0].image]]
+                        ]
                     }
                     script.echo "is.status.tags --> ${tags}"
                     
@@ -527,11 +529,7 @@ class OpenShiftHelper {
                             'metadata': ['name':iso.metadata.name, 'namespace':iso.metadata.namespace],
                             'labels':iso.metadata.labels,
                             'status':[
-                                'tags':[
-                                    (labels['env-name']):[
-                                        'items':['image':tags.items[0].image]
-                                    ]
-                                ]
+                                'tags':tags
                             ]
                     ]
                     String baseName=getImageStreamBaseName(iso)
