@@ -519,10 +519,19 @@ class OpenShiftHelper {
                     buildOutput["${key(iso)}"] = [
                             'kind': iso.kind,
                             'metadata': ['name':iso.metadata.name, 'namespace':iso.metadata.namespace],
-                            'labels':iso.metadata.labels
+                            'labels':iso.metadata.labels,
+                            'status':[
+                                'tags':[
+                                    labels['env-name']:[
+                                        ['image':iso.status.tags[labels['env-name']][0].image]
+                                    ]
+                                ]
+                            ]
                     ]
                     String baseName=getImageStreamBaseName(iso)
-                    buildOutput["BaseImageStream/${baseName}"]=['ImageStream':key(iso)]
+                    buildOutput["BaseImageStream/${baseName}"]=[
+                        'ImageStream':key(iso)
+                    ]
                 }
 
                 context['build'] = ['status':buildOutput, 'projectName':"${openshift.project()}"]
@@ -858,7 +867,8 @@ class OpenShiftHelper {
         for (Map m : upserts) {
             String sourceImageStreamKey=context.build.status["BaseImageStream/${getImageStreamBaseName(m)}"]['ImageStream']
             Map sourceImageStream = context.build.status[sourceImageStreamKey]
-            String sourceImageStreamRef="${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}:${context.buildEnvName}"
+            String sourceImage=sourceImageStream.status.tags[context.buildEnvName][0].image
+            String sourceImageStreamRef="${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}"
             String targetImageStreamRef="${m.metadata.name}:${labels['env-name']}"
 
             script.echo "Tagging '${sourceImageStreamRef}' as '${targetImageStreamRef}'"
