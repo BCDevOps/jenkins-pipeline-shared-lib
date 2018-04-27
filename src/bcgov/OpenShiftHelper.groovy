@@ -424,7 +424,11 @@ class OpenShiftHelper {
                         
                         m.spec.runPolicy = 'SerialLatestOnly'
                         m.spec.output.to.name=m.spec.output.to.name.tokenize(':')[0]+':'+context.buildEnvName
-                        script.echo "${key(m)} - ${m.spec.source.git.uri}#${m.metadata.annotations['source.git.ref']} @ ${m.metadata.annotations['source.git.head']} - /${m?.spec?.source?.contextDir?:''} @ ${m.metadata.annotations['source.git.commit']}"
+                        if (m.spec.source?.git?.uri){
+                            script.echo "${key(m)} - ${m.spec.source.git.uri}#${m.metadata.annotations['source.git.ref']} @ ${m.metadata.annotations['source.git.head']} - /${m?.spec?.source?.contextDir?:''} @ ${m.metadata.annotations['source.git.commit']}"
+                        }else{
+                            script.echo "${key(m)} - @ ${m.metadata.annotations['source.git.commit']}"
+                        }
                     }
                 }
 
