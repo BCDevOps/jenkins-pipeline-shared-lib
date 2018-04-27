@@ -397,25 +397,27 @@ class OpenShiftHelper {
 
                         if (!m.metadata.annotations) m.metadata.annotations=[:]
                         if (!m.metadata.labels) m.metadata.labels=[:]
+                        m.metadata.annotations['source.git.commit']=commitId
                         
-                        if (m.spec.source.git.uri.equalsIgnoreCase(context.gitRepoUrl)){
-                            commitId=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, contextDir?:'')
-                            if (m.spec.source.git.ref) m.metadata.annotations['source/spec.source.git.ref']=m.spec.source.git.ref
-                            m.metadata.annotations['source.git.ref']=context.gitBranchRemoteRef
-                            m.metadata.annotations['source.git.head']=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, '')
-                            m.metadata.annotations['source.git.commit']=commitId
-                            m.spec.source.git.ref=commitId
-                            if (context.isPullRequestFromFork) {
-                                m.spec.source.git.ref=m.metadata.annotations['source.git.head']
+                        if (m.spec.source?.git?.uri){
+                            if (m.spec.source.git.uri.equalsIgnoreCase(context.gitRepoUrl)){
+                                commitId=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, contextDir?:'')
+                                if (m.spec.source.git.ref) m.metadata.annotations['source/spec.source.git.ref']=m.spec.source.git.ref
+                                m.metadata.annotations['source.git.ref']=context.gitBranchRemoteRef
+                                m.metadata.annotations['source.git.head']=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, '')
+                                m.metadata.annotations['source.git.commit']=commitId
+                                m.spec.source.git.ref=commitId
+                                if (context.isPullRequestFromFork) {
+                                    m.spec.source.git.ref=m.metadata.annotations['source.git.head']
+                                }
+                            }else{
+                                commitId=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, contextDir?:'')
+                                m.metadata.annotations['source.git.ref']=m.spec.source.git.ref
+                                m.metadata.annotations['source.git.head']=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, '')
+                                m.metadata.annotations['source.git.commit']=commitId
+                                m.spec.source.git.ref=commitId
                             }
-                        }else{
-                            commitId=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, contextDir?:'')
-                            m.metadata.annotations['source.git.ref']=m.spec.source.git.ref
-                            m.metadata.annotations['source.git.head']=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, '')
-                            m.metadata.annotations['source.git.commit']=commitId
-                            m.spec.source.git.ref=commitId
                         }
-                        
                         //m.metadata.labels['git-ref']=m.metadata.annotations['source.git.ref']
                         m.metadata.labels['git-commit']=m.metadata.annotations['source.git.commit']
                         //m.spec.source.git.ref=m.metadata.annotations['source.git.commit']
@@ -453,19 +455,25 @@ class OpenShiftHelper {
                             newBuild = openshift.selector(key(item)).startBuild()
                         }else{
                             Map m=newObjects[key(item)]
-                            String newestCommit=m.metadata.annotations['spec.source.git.ref']
-                            String oldestCommit=lastBuild.spec.revision.git.commit
-                            if (newestCommit!=null && !newestCommit.equalsIgnoreCase(oldestCommit)) {
-                                if (context.isPullRequestFromFork) {
-                                    //git rev-list [newer] ^[older] --count
-                                    int distance = Integer.parseInt(script.sh(returnStdout: true, script: "git rev-list ${newestCommit} ^${oldestCommit} --count").trim())
-                                    script.echo "${distance} commits between ${oldestCommit} (oldest)  and ${newestCommit} (newest)"
-                                    if (distance > 0) {
-                                        script.echo "   Starting a new build because the last one (${key(lastBuild)}) was outdated"
-                                        newBuild = openshift.selector(key(item)).startBuild()
-                                        startedNewBuilds = true
+                            if (m.spec.source?.git?.uri){
+                                String newestCommit=m.metadata.annotations['spec.source.git.ref']
+                                String oldestCommit=lastBuild.spec?.revision?.git?.commit
+
+                                if (newestCommit!=null && !newestCommit.equalsIgnoreCase(oldestCommit)) {
+                                    if (context.isPullRequestFromFork) {
+                                        //git rev-list [newer] ^[older] --count
+                                        int distance = Integer.parseInt(script.sh(returnStdout: true, script: "git rev-list ${newestCommit} ^${oldestCommit} --count").trim())
+                                        script.echo "${distance} commits between ${oldestCommit} (oldest)  and ${newestCommit} (newest)"
+                                        if (distance > 0) {
+                                            script.echo "   Starting a new build because the last one (${key(lastBuild)}) was outdated"
+                                            newBuild = openshift.selector(key(item)).startBuild()
+                                            startedNewBuilds = true
+                                        }
                                     }
                                 }
+                            }else{
+                                script.echo "   Starting a new build because it is not from git"
+                                startedNewBuilds = true
                             }
                             //git rev-list e71492589b94239576a6397997c29e6cb5b55fc8 ^e71492589b94239576a6397997c29e6cb5b55fc8 --count
                         }
