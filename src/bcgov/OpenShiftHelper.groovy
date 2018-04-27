@@ -476,8 +476,8 @@ class OpenShiftHelper {
                                     }
                                 }
                             }else{
-                                script.echo "   Starting a new build because it is not from git"
-                                startedNewBuilds = true
+                                script.echo "   Not starting a build (relying on ConfigChange/ImageChange triggers)"
+                                //startedNewBuilds = true
                             }
                             //git rev-list e71492589b94239576a6397997c29e6cb5b55fc8 ^e71492589b94239576a6397997c29e6cb5b55fc8 --count
                         }
