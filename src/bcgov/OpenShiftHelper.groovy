@@ -252,13 +252,15 @@ class OpenShiftHelper {
         while(doCheck) {
             openshift.selector('builds', labels).watch {
                 boolean allDone = true
+                /*
                 for (Map object:it.objects(exportable:true)){
                     if (!isBuildComplete(object)) {
                         script.echo "${key(object)} - ${object.status.phase}"
                         allDone = false
                     }
                 }
-                /*
+                */
+                
                 it.withEach { item ->
                     def object = item.object()
                     if (!isBuildComplete(object)) {
@@ -266,7 +268,7 @@ class OpenShiftHelper {
                         allDone = false
                     }
                 }
-                */
+                
                 return allDone
             }
             script.sleep 5
