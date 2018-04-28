@@ -599,12 +599,12 @@ class OpenShiftHelper {
                     patches.add(o)
                 }else{
                     //script.echo "Skipping '${o.kind}/${o.metadata.name}' (Already Exists)"
-                    def newObject=o
-                    if (newObject.spec && newObject.spec.tags){
-                        newObject.spec.remove('tags')
-                    }
+                    //def newObject=o
+                    //if (newObject.spec && newObject.spec.tags){
+                    //    newObject.spec.remove('tags')
+                    //}
                     //script.echo "Modified '${o.kind}/${o.metadata.name}' = ${newObject}"
-                    updates.add(newObject)
+                    updates.add(o)
                 }
             }
 
