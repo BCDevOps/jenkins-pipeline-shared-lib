@@ -394,6 +394,9 @@ class OpenShiftHelper {
 
                 for (Map m : newObjects.values()){
                     if ('BuildConfig'.equalsIgnoreCase(m.kind)){
+                        // apply last commit id/hash to spec.source.git.ref
+                        // this ensure that a build will get triggered only when there has been changes
+                        
                         String commitId = context.commitId
                         String contextDir=null
 
@@ -439,8 +442,36 @@ class OpenShiftHelper {
                         }else{
                             script.echo "${key(m)} - @ ${m.metadata.annotations['source.git.commit']}"
                         }
-                    }
-                }
+                        
+                        // retrieve existing spec.triggers.imageChange.lastTriggeredImageID
+                        // this will ensure that builds won't be triggered upon updating BuildConfig
+                        if (m.spec?.triggers != null ){
+                            Map current = currentObjects[key(m)]
+                            if (current!=null){
+                                for (Map t1:m.spec.triggers){
+                                    if ('ImageChange'.equalsIgnoreCase(t1.type)){
+                                        if (current.spec.triggers != null){
+                                            for (Map t2:current.spec.triggers){
+                                                if ('ImageChange'.equalsIgnoreCase(t2.type)){
+                                                    if (
+                                                        (t1.imageChange.from == null && t2.imageChange.from == null) ||
+                                                        (
+                                                            t1.imageChange.from != null && t2.imageChange.from != null
+                                                            t1.imageChange.from.kind.equalsIgnoreCase(t2.imageChange.from.kind) &&
+                                                            t1.imageChange.from.name.equalsIgnoreCase(t2.imageChange.from.name)
+                                                        )
+                                                    ){
+                                                        t1.lastTriggeredImageID=t2.lastTriggeredImageID
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } //end fix (m.spec.triggers)
+                    } //end if
+                } // end for
 
                 def initialBuildConfigState=loadBuildConfigStatus(openshift, labels)
 
