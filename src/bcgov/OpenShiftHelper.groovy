@@ -456,7 +456,7 @@ class OpenShiftHelper {
                                                     if (
                                                         (t1.imageChange.from == null && t2.imageChange.from == null) ||
                                                         (
-                                                            t1.imageChange.from != null && t2.imageChange.from != null
+                                                            (t1.imageChange.from != null && t2.imageChange.from != null) &&
                                                             t1.imageChange.from.kind.equalsIgnoreCase(t2.imageChange.from.kind) &&
                                                             t1.imageChange.from.name.equalsIgnoreCase(t2.imageChange.from.name)
                                                         )
