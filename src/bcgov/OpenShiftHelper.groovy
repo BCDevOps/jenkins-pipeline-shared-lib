@@ -469,6 +469,7 @@ class OpenShiftHelper {
                                     }
                                 }
                             }
+                            script.echo "${key(m)} - triggers -> ${m.spec.triggers}"
                         } //end fix (m.spec.triggers)
                     } //end if
                 } // end for
