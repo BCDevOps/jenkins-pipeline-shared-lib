@@ -461,7 +461,7 @@ class OpenShiftHelper {
                                                             t1.imageChange.from.name.equalsIgnoreCase(t2.imageChange.from.name)
                                                         )
                                                     ){
-                                                        t1.lastTriggeredImageID=t2.lastTriggeredImageID
+                                                        t1.imageChange.lastTriggeredImageID=t2.lastTriggeredImageID
                                                     }
                                                 }
                                             }
