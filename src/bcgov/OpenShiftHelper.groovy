@@ -448,6 +448,8 @@ class OpenShiftHelper {
                         if (m.spec?.triggers != null ){
                             Map current = currentObjects[key(m)]
                             if (current!=null){
+                                script.echo "${key(m)} - current triggers -> ${current.spec.triggers}"
+                                script.echo "${key(m)} - new triggers -> ${m.spec.triggers}"
                                 for (Map t1:m.spec.triggers){
                                     if ('ImageChange'.equalsIgnoreCase(t1.type)){
                                         if (current.spec.triggers != null){
