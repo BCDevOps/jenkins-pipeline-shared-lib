@@ -136,7 +136,7 @@ class OpenShiftHelper {
         def selector=openshift.selector('is,bc,secret,configmap,dc,svc,route', labels)
 
         if (selector.count()>0) {
-            for (Map model : selector.objects(exportable: true)) {
+            for (Map model : selector.objects()) {
                 models[key(model)] = model
             }
         }
