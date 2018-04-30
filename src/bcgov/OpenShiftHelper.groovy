@@ -136,7 +136,7 @@ class OpenShiftHelper {
         def selector=openshift.selector('is,bc,secret,configmap,dc,svc,route', labels)
 
         if (selector.count()>0) {
-            for (Map model : selector.objects()) {
+            for (Map model : selector.objects(exportable:false)) {
                 models[key(model)] = model
             }
         }
@@ -391,7 +391,7 @@ class OpenShiftHelper {
                 script.echo "Connected to project '${openshift.project()}' as user '${openshift.raw('whoami').out.tokenize()[0]}'"
                 def newObjects = loadObjectsFromTemplate(openshift, context.templates.build, context, 'build')
                 def currentObjects = loadObjectsByLabel(openshift, labels)
-
+                script.echo "${currentObjects}"
                 for (Map m : newObjects.values()){
                     if ('BuildConfig'.equalsIgnoreCase(m.kind)){
                         // apply last commit id/hash to spec.source.git.ref
