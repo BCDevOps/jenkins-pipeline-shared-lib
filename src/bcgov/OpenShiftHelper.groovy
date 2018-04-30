@@ -456,13 +456,14 @@ class OpenShiftHelper {
                                             for (Map t2:current.spec.triggers){
                                                 if ('ImageChange'.equalsIgnoreCase(t2.type)){
                                                     if (
-                                                        (t1.imageChange.from == null && t2.imageChange.from == null) ||
+                                                        (t1.imageChange?.from == null && t2.imageChange?.from == null) ||
                                                         (
-                                                            (t1.imageChange.from != null && t2.imageChange.from != null) &&
+                                                            (t1.imageChange?.from != null && t2.imageChange?.from != null) &&
                                                             t1.imageChange.from.kind.equalsIgnoreCase(t2.imageChange.from.kind) &&
                                                             t1.imageChange.from.name.equalsIgnoreCase(t2.imageChange.from.name)
                                                         )
                                                     ){
+                                                        t1.imageChange = t1.imageChange?:[:]
                                                         t1.imageChange.lastTriggeredImageID=t2.imageChange.lastTriggeredImageID
                                                     }
                                                 }
