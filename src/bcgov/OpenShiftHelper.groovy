@@ -981,7 +981,7 @@ class OpenShiftHelper {
 
         waitForDeploymentsToComplete(script, openshift, labels)
 
-        openshift.selector('route', labels).withEach {
+        openshift.selector('route', labels + ['frontend':'true']).withEach {
             Map route= it.object()
             if (route.spec.tls){
                 deployCtx['environmentUrl']= "https://${route.spec.host}${route.spec.path?:'/'}"
