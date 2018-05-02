@@ -751,6 +751,8 @@ class OpenShiftHelper {
         Map deployCfg = createDeployContext(script, context, envKeyName)
         context['deploy'] = deployCfg
         context['DEPLOY_ENV_NAME'] = envKeyName
+        context.deployments = context.deployments?:[:]
+        context.deployments[envKeyName] = deployCfg
     }
 
     private void clearDeploymentContext(CpsScript script, OpenShiftDSL openshift, Map context, String envKeyName) {
