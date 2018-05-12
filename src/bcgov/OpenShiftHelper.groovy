@@ -505,7 +505,7 @@ class OpenShiftHelper {
                         }else{
                             Map m=newObjects[key(item)]
                             if (m!=null) {
-                                if (m.metadata?.annotations['source.git.commit'] != null && m.metadata.annotations['source.git.commit'].equalsIgnoreCase(lastBuild.spec?.revision?.git?.commit)) {
+                                if (m.metadata?.annotations['source.git.commit'] != null && !m.metadata.annotations['source.git.commit'].equalsIgnoreCase(lastBuild.spec?.revision?.git?.commit)) {
                                     script.echo "   Starting a new build because the last commit (${lastBuild.spec?.revision?.git?.commit}) does not match latest one (${m.metadata.annotations['source.git.commit']})"
                                     newBuild = openshift.selector(key(item)).startBuild()
                                 } else if (m.spec.source?.git?.uri) {
