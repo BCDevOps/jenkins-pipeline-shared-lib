@@ -511,28 +511,32 @@ class OpenShiftHelper {
                         }else{
                             Map m=newObjects[key(item)]
                             if (m!=null) {
-                                if (m.metadata?.annotations['source.git.commit'] != null && !m.metadata.annotations['source.git.commit'].equalsIgnoreCase(lastBuild.spec?.revision?.git?.commit)) {
-                                    script.echo "   Starting a new build because the last commit (${lastBuild.spec?.revision?.git?.commit}) does not match latest one (${m.metadata.annotations['source.git.commit']})"
-                                    newBuild = openshift.selector(key(item)).startBuild()
-                                } else if (m.spec.source?.git?.uri) {
-                                    String newestCommit = m.metadata.annotations['spec.source.git.ref']
-                                    String oldestCommit = lastBuild.spec?.revision?.git?.commit
+                                if (lastBuild.spec?.revision?.git?.commit !=null){
+                                    if (m.metadata?.annotations['source.git.commit'] != null && !m.metadata.annotations['source.git.commit'].equalsIgnoreCase(lastBuild.spec?.revision?.git?.commit)) {
+                                        script.echo "   Starting a new build because the last commit (${lastBuild.spec?.revision?.git?.commit}) does not match latest one (${m.metadata.annotations['source.git.commit']})"
+                                        newBuild = openshift.selector(key(item)).startBuild()
+                                    } else if (m.spec.source?.git?.uri) {
+                                        String newestCommit = m.metadata.annotations['spec.source.git.ref']
+                                        String oldestCommit = lastBuild.spec?.revision?.git?.commit
 
-                                    if (newestCommit != null && !newestCommit.equalsIgnoreCase(oldestCommit)) {
-                                        if (context.isPullRequestFromFork) {
-                                            //git rev-list [newer] ^[older] --count
-                                            int distance = Integer.parseInt(script.sh(returnStdout: true, script: "git rev-list ${newestCommit} ^${oldestCommit} --count").trim())
-                                            script.echo "${distance} commits between ${oldestCommit} (oldest)  and ${newestCommit} (newest)"
-                                            if (distance > 0) {
-                                                script.echo "   Starting a new build because the last one (${key(lastBuild)}) was outdated"
-                                                newBuild = openshift.selector(key(item)).startBuild()
-                                                startedNewBuilds = true
+                                        if (newestCommit != null && !newestCommit.equalsIgnoreCase(oldestCommit)) {
+                                            if (context.isPullRequestFromFork) {
+                                                //git rev-list [newer] ^[older] --count
+                                                int distance = Integer.parseInt(script.sh(returnStdout: true, script: "git rev-list ${newestCommit} ^${oldestCommit} --count").trim())
+                                                script.echo "${distance} commits between ${oldestCommit} (oldest)  and ${newestCommit} (newest)"
+                                                if (distance > 0) {
+                                                    script.echo "   Starting a new build because the last one (${key(lastBuild)}) was outdated"
+                                                    newBuild = openshift.selector(key(item)).startBuild()
+                                                    startedNewBuilds = true
+                                                }
                                             }
                                         }
+                                    } else {
+                                        script.echo "   Not starting a build (relying on ConfigChange/ImageChange triggers)"
+                                        //startedNewBuilds = true
                                     }
-                                } else {
-                                    script.echo "   Not starting a build (relying on ConfigChange/ImageChange triggers)"
-                                    //startedNewBuilds = true
+                                }else{
+                                    script.echo "   This build is not based on a GIT repository (relying on ConfigChange/ImageChange triggers)"
                                 }
                                 //git rev-list e71492589b94239576a6397997c29e6cb5b55fc8 ^e71492589b94239576a6397997c29e6cb5b55fc8 --count
                             }else{
