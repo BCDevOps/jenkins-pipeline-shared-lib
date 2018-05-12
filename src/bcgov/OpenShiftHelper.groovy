@@ -262,10 +262,16 @@ class OpenShiftHelper {
                 */
                 
                 it.withEach { item ->
-                    def object = item.object()
-                    if (!isBuildComplete(object)) {
-                        script.echo "${key(object)} - ${object.status.phase}"
-                        allDone = false
+                    try {
+                        def object = item.object()
+                        if (!isBuildComplete(object)) {
+                            script.echo "${key(object)} - ${object.status.phase}"
+                            allDone = false
+                        }
+                    }catch (ex){
+                        //This can happen when the script waits for so long
+                        // that a build object may just have been pruned/deleted
+                        return false
                     }
                 }
                 
