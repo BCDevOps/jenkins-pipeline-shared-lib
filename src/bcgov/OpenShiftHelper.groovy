@@ -405,7 +405,7 @@ class OpenShiftHelper {
 
 
         loadMetadata(script, context)
-        
+
         script.echo "isPullRequestFromFork:${context.isPullRequestFromFork}"
 
         new GitHubHelper().createCommitStatus(script, context.commitId, 'PENDING', "${script.env.BUILD_URL}", 'Build', 'continuous-integration/jenkins/build')
@@ -468,7 +468,7 @@ class OpenShiftHelper {
                         m.spec.runPolicy = 'SerialLatestOnly'
                         m.spec.output.to.name=m.spec.output.to.name.tokenize(':')[0]+':'+context.buildEnvName
                         if (m.spec.source?.git?.uri){
-                            script.echo "${key(m)} - ${m.spec.source.git.uri}#${m.metadata.annotations['source.git.ref']} @ ${m.metadata.annotations['source.git.head']} - /${m?.spec?.source?.contextDir?:''} @ ${m.metadata.annotations['source.git.commit']}"
+                            script.echo "${key(m)} - ${m.spec.source.git.uri}#${m.spec?.source?.git?.ref} @ ${m.metadata.annotations['source.git.head']} - /${m?.spec?.source?.contextDir?:''} @ ${m.metadata.annotations['source.git.commit']}"
                         }else{
                             script.echo "${key(m)} - @ ${m.metadata.annotations['source.git.commit']}"
                         }
