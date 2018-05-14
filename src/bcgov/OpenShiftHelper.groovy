@@ -842,10 +842,10 @@ class OpenShiftHelper {
                         def result=openshift.delete((['all'] + labelsToArgs(deployment.labels)) as String[])
                         script.echo "Output:\n${result.out}"
 
-                        def protectedSelector=openshift.selector('secret,configmap', deployment.labels)
+                        def protectedSelector=openshift.selector('secret,configmap,pvc', deployment.labels)
                         if (protectedSelector.count() > 0) {
                             script.echo "Deleting: ${protectedSelector.names()}"
-                            result=openshift.delete((['secret,configmap'] + labelsToArgs(deployment.labels)) as String[])
+                            result=openshift.delete((['secret,configmap,pvc'] + labelsToArgs(deployment.labels)) as String[])
                             script.echo "Output:\n${result.out}"
                         }
                     } // end withProject
