@@ -158,7 +158,7 @@ class OpenShiftHelper {
             for (Map bc : selector.objects()) {
                 String buildName = "Build/${bc.metadata.name}-${bc.status.lastVersion}"
                 Map build=null
-                
+
                 if (openshift.selector(buildName).exists()){
                     build = openshift.selector(buildName).object()
                 }
@@ -397,7 +397,7 @@ class OpenShiftHelper {
             }
         }
 
-        script.echo "BRANCH_NAME=${script.env.BRANCH_NAME}\nCHANGE_ID=${script.env.CHANGE_ID}\nCHANGE_TARGET=${script.env.CHANGE_TARGET}\nBUILD_URL=${script.env.BUILD_URL}"
+        script.echo "BRANCH_NAME=${script.env.BRANCH_NAME}\nCHANGE_ID=${script.env.CHANGE_ID}\nCHANGE_TARGET=${script.env.CHANGE_TARGET}\nBUILD_URL=${script.env.BUILD_URL}\nisPullRequestFromFork"
         script.echo "absoluteUrl=${script.currentBuild.absoluteUrl}"
 
         script.sh(returnStdout: false, script: "git log --pretty=oneline -20")
@@ -405,6 +405,8 @@ class OpenShiftHelper {
 
 
         loadMetadata(script, context)
+        
+        script.echo "isPullRequestFromFork:${context.isPullRequestFromFork}"
 
         new GitHubHelper().createCommitStatus(script, context.commitId, 'PENDING', "${script.env.BUILD_URL}", 'Build', 'continuous-integration/jenkins/build')
 
@@ -687,7 +689,7 @@ class OpenShiftHelper {
 
         if (creations.size()>0){
             script.echo "Creating ${creations.size()} objects"
-            openshift.apply(creations);
+            openshift.apply(creations, '');
         }
         
         if (patches.size()>0){
