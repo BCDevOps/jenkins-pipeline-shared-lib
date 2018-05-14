@@ -157,27 +157,34 @@ class OpenShiftHelper {
         if (selector.count()>0) {
             for (Map bc : selector.objects()) {
                 String buildName = "Build/${bc.metadata.name}-${bc.status.lastVersion}"
-                Map build = openshift.selector(buildName).object()
-                buildOutput[buildName] = [
-                        'kind': build.kind,
-                        'metadata': ['name':build.metadata.name],
-                        'spec': [ 'revision':build.spec.revision ],
-                        'output': [
-                                'to': [
-                                        'kind': build.spec.output.to.kind,
-                                        'name': build.spec.output.to.name
-                                ]
-                        ],
-                        'status': ['phase': build.status.phase]
-                ]
+                Map build=null
+                
+                if (openshift.selector(buildName).exists()){
+                    build = openshift.selector(buildName).object()
+                }
 
-                if (isBuildSuccesful(build)) {
-                    buildOutput["${build.spec.output.to.kind}/${build.spec.output.to.name}"] = [
-                            'kind': build.spec.output.to.kind,
-                            'metadata': ['name':build.spec.output.to.name],
-                            'imageDigest': build.status.output.to.imageDigest,
-                            'outputDockerImageReference': build.status.outputDockerImageReference
+                if (build!=null) {
+                    buildOutput[buildName] = [
+                            'kind'    : build.kind,
+                            'metadata': ['name': build.metadata.name],
+                            'spec'    : ['revision': build.spec.revision],
+                            'output'  : [
+                                    'to': [
+                                            'kind': build.spec.output.to.kind,
+                                            'name': build.spec.output.to.name
+                                    ]
+                            ],
+                            'status'  : ['phase': build.status.phase]
                     ]
+
+                    if (isBuildSuccesful(build)) {
+                        buildOutput["${build.spec.output.to.kind}/${build.spec.output.to.name}"] = [
+                                'kind'                      : build.spec.output.to.kind,
+                                'metadata'                  : ['name': build.spec.output.to.name],
+                                'imageDigest'               : build.status.output.to.imageDigest,
+                                'outputDockerImageReference': build.status.outputDockerImageReference
+                        ]
+                    }
                 }
 
                 buildOutput["${key(bc)}"] = [
