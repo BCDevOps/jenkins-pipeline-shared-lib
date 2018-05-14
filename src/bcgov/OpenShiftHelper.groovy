@@ -283,7 +283,7 @@ class OpenShiftHelper {
                             allDone = false
                         }
                     }catch (ex){
-                        echo "${stackTraceAsString(ex)}"
+                        script.echo "${stackTraceAsString(ex)}"
                         //This can happen when the script waits for so long
                         // that a build object may just have been pruned/deleted
                         return false
@@ -302,7 +302,7 @@ class OpenShiftHelper {
                     }
                 } //end for
             }catch (ex){
-                echo "${stackTraceAsString(ex)}"
+                script.echo "${stackTraceAsString(ex)}"
                 //This can happen when the script waits for so long
                 // that a build object may just have been pruned/deleted
                 doCheck = true
@@ -536,8 +536,8 @@ class OpenShiftHelper {
                             Map m=newObjects[key(item)]
                             if (m!=null) {
                                 if (lastBuild.spec?.revision?.git?.commit !=null){
-                                    if (m.metadata?.annotations['source.git.commit'] != null && !m.metadata.annotations['source.git.commit'].equalsIgnoreCase(lastBuild.spec?.revision?.git?.commit)) {
-                                        script.echo "   Starting a new build because the last commit (${lastBuild.spec?.revision?.git?.commit}) does not match latest one (${m.metadata.annotations['source.git.commit']})"
+                                    if (m.metadata?.labels['git-commit'] != null && !m.metadata.labels['git-commit'].equalsIgnoreCase(lastBuild.spec?.revision?.git?.commit)) {
+                                        script.echo "   Starting a new build because the last commit (${lastBuild.spec?.revision?.git?.commit}) does not match latest one (${m.metadata.labels['git-commit']})"
                                         newBuild = openshift.selector(key(item)).startBuild()
                                     } else if (m.spec.source?.git?.uri) {
                                         String newestCommit = m.metadata.annotations['spec.source.git.ref']
