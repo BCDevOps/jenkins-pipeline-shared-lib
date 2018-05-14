@@ -451,7 +451,7 @@ class OpenShiftHelper {
                                 m.metadata.annotations['source.git.commit']=commitId
                                 m.spec.source.git.ref=commitId
                                 if (context.isPullRequestFromFork) {
-                                    m.spec.source.git.ref=m.metadata.annotations['source.git.head']
+                                    m.spec.source.git.ref=context.gitBranchRemoteRef
                                 }
                             }else{
                                 commitId=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, contextDir?:'')
