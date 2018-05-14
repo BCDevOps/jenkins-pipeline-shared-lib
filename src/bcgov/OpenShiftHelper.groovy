@@ -73,6 +73,13 @@ class OpenShiftHelper {
     }
 
     @NonCPS
+    private static String stackTraceAsString(Throwable t) {
+        StringWriter sw = new StringWriter();
+        t.printStackTrace(new PrintWriter(sw));
+        return sw.toString()
+    }
+
+    @NonCPS
     private def processStringTemplate(String template, Map bindings) {
         def engine = new groovy.text.GStringTemplateEngine()
         return engine.createTemplate(template).make(bindings).toString()
@@ -269,6 +276,7 @@ class OpenShiftHelper {
                             allDone = false
                         }
                     }catch (ex){
+                        echo "${stackTraceAsString(ex)}"
                         //This can happen when the script waits for so long
                         // that a build object may just have been pruned/deleted
                         return false
@@ -279,13 +287,20 @@ class OpenShiftHelper {
             }
             script.sleep 5
             doCheck=false
-            for (Map build:openshift.selector('builds', labels).objects()){
-                if (!isBuildComplete(build)) {
-                    doCheck=true
-                    break
-                }
+            try {
+                for (Map build:openshift.selector('builds', labels).objects()){
+                    if (!isBuildComplete(build)) {
+                        doCheck = true
+                        break
+                    }
+                } //end for
+            }catch (ex){
+                echo "${stackTraceAsString(ex)}"
+                //This can happen when the script waits for so long
+                // that a build object may just have been pruned/deleted
+                doCheck = true
             }
-        }
+        } //end while
         //openshift.verbose(false)
     }
 
