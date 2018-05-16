@@ -7,7 +7,9 @@ private void abortBuild(build){
             for (org.jenkinsci.plugins.workflow.support.steps.input.InputStepExecution inputStep:inputAction.getExecutions()){
                 if (!inputStep.isSettled()){
                     inputStep.doAbort()
-                    while (build.isInProgress()){
+                    int counter=0
+                    while (counter<60 && build.isInProgress()){
+                        counter++
                         Thread.sleep(1000) //milliseconds
                     }
                 }
