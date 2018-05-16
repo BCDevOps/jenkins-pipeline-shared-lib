@@ -758,12 +758,12 @@ class OpenShiftHelper {
                                         errors.add("Missing 'secret/${secretName}'")
                                     }
                                 }
-                            }else if ("Secret".equalsIgnoreCase(m.kind)) {
+                            }else if ("Secret".equalsIgnoreCase(m.kind) || "ConfigMap".equalsIgnoreCase(m.kind)) {
                                 String sourceName=annotations[ANNOTATION_AS_COPY_OF+".${envKeyName}"]?:annotations[ANNOTATION_AS_COPY_OF]
                                 if (sourceName!=null){
-                                    def selector = openshift.selector("secrets/${sourceName}")
+                                    def selector = openshift.selector("${m.kind}/${sourceName}")
                                     if (selector.count() == 0) {
-                                        errors.add("Missing 'secret/${sourceName}'")
+                                        errors.add("Missing '${m.kind}/${sourceName}'")
                                     }
                                 }
                             }
@@ -1003,8 +1003,8 @@ class OpenShiftHelper {
             }else{
                 String sourceName=annotations[ANNOTATION_AS_COPY_OF+".${deployCtx.envKeyName}"]?:annotations[ANNOTATION_AS_COPY_OF]
                 if (sourceName!=null && sourceName.length()>0) {
-                    script.echo "Creating a copy of '${sourceName}' as '${key(m)}'"
-                    def selector = openshift.selector("secrets/${sourceName}")
+                    script.echo "Creating a copy of '${m.kind}/${sourceName}' as '${key(m)}'"
+                    def selector = openshift.selector("${m.kind}/${sourceName}")
                     if (selector.count() == 1) {
                         Map sourceModel=selector.object(exportable:true);
                         sourceModel.metadata.name=m.metadata.name
