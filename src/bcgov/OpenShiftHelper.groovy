@@ -212,17 +212,32 @@ class OpenShiftHelper {
         }
 
         boolean doCheck=true
+        int failures=0
+
+        //wait for replication controllers to finish
         while(doCheck) {
-            openshift.selector('rc', rcLabels).watch {
-                boolean allDone = true
-                it.withEach { item ->
-                    def object = item.object()
-                    script.echo "${key(object)} - ${getReplicationControllerStatus(object)}"
-                    if (!isReplicationControllerComplete(object)) {
-                        allDone = false
+            try {
+                script.timeout(5) {
+                    openshift.selector('rc', rcLabels).watch {
+                        boolean allDone = true
+                        it.withEach { item ->
+                            def object = item.object()
+                            script.echo "${key(object)} - ${getReplicationControllerStatus(object)}"
+                            if (!isReplicationControllerComplete(object)) {
+                                allDone = false
+                            }
+                        }
+                        return allDone
                     }
                 }
-                return allDone
+            }catch (ex){
+                failures++
+                script.echo "${stackTraceAsString(ex)}"
+                //after 10 failures, give up
+                if (failures > 10){
+                    throw ex
+                }
+                continue
             }
 
             script.sleep 5
@@ -235,19 +250,35 @@ class OpenShiftHelper {
             }
         }
 
+        //wait for pods to startup
         doCheck=true
+        failures = 0
         while(doCheck) {
-            openshift.selector('dc', labels).watch {
-                boolean allDone = true
-                it.withEach { item ->
-                    def dc = item.object()
-                    script.echo "${key(dc)} - desired:${dc?.status?.replicas}  ready:${dc?.status?.readyReplicas} available:${dc?.status?.availableReplicas}"
-                    if (!(dc?.status?.replicas == dc?.status?.readyReplicas &&  dc?.status?.replicas == dc?.status?.availableReplicas)) {
-                        allDone = false
+            try {
+                //5 minutes timeout before restarting watch
+                script.timeout(5) {
+                    openshift.selector('dc', labels).watch {
+                        boolean allDone = true
+                        it.withEach { item ->
+                            def dc = item.object()
+                            script.echo "${key(dc)} - desired:${dc?.status?.replicas}  ready:${dc?.status?.readyReplicas} available:${dc?.status?.availableReplicas}"
+                            if (!(dc?.status?.replicas == dc?.status?.readyReplicas && dc?.status?.replicas == dc?.status?.availableReplicas)) {
+                                allDone = false
+                            }
+                        }
+                        return allDone
                     }
                 }
-                return allDone
+            } catch (ex){
+                failures++
+                script.echo "${stackTraceAsString(ex)}"
+                //after 10 failures, give up
+                if (failures > 10){
+                    throw ex
+                }
+                continue
             }
+
             script.sleep 5
             doCheck=false
             for (Map dc : openshift.selector('dc', labels).objects()){
