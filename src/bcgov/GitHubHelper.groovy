@@ -15,6 +15,13 @@ class GitHubHelper {
     }
 
     @NonCPS
+    private static String stackTraceAsString(Throwable t) {
+        StringWriter sw = new StringWriter();
+        t.printStackTrace(new PrintWriter(sw));
+        return sw.toString()
+    }
+
+    @NonCPS
     static GHRepository getGitHubRepository(String url){
         return GitHubRepositoryName.create(url).resolveOne()
     }
@@ -67,7 +74,13 @@ class GitHubHelper {
     }
 
     static boolean mergeAndClosePullRequest(CpsScript script) {
-        return mergeAndClosePullRequest(script.scm.getUserRemoteConfigs()[0].getUrl(), Integer.parseInt(script.env.CHANGE_ID))
+        try {
+            return mergeAndClosePullRequest(script.scm.getUserRemoteConfigs()[0].getUrl(), Integer.parseInt(script.env.CHANGE_ID))
+        }catch (ex){
+            //This need to be done because the github API does NOT return serializable Exceptions
+            script.echo "Original Stack Trace:\n${stackTraceAsString(ex)}"
+            throw new IOException(ex.message)
+        }
     }
 
     static GHDeploymentBuilder createDeployment(CpsScript script, String ref) {
