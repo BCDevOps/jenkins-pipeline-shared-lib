@@ -1007,20 +1007,20 @@ class OpenShiftHelper {
             String sourceImage=sourceImageStream.status.tags[context.buildEnvName].items[0].image
             String sourceImageStreamRef="${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}"
             String targetImageStreamRef="${m.metadata.name}:${labels['env-name']}"
-
+            String tempImageTagName="tmp-${labels['env-name']}"
             //The 2 steps tagging (import and tag) is required to create a `ImageStreamImage` that is local to the target project
-            /*
-            script.echo "Importing Image '${sourceImageStreamRef}' as '${m.metadata.name}:tmp'"
-            openshift.raw('import-image', "${m.metadata.name}:tmp", "--from=docker-registry.default.svc:5000/${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
+            
+            script.echo "Importing Image '${sourceImageStreamRef}' as '${m.metadata.name}:${tempImageTagName}'"
+            openshift.raw('import-image', "${m.metadata.name}:${tempImageTagName}", "--from=docker-registry.default.svc:5000/${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
 
             script.echo "Tagging '${m.metadata.name}@${sourceImage}' as '${targetImageStreamRef}'"
             openshift.tag("${m.metadata.name}@${sourceImage}", targetImageStreamRef)
 
-            script.echo "Deleting temporary tag: '${m.metadata.name}:tmp'"
-            openshift.tag("${m.metadata.name}:tmp", '-d')
-            */
-            script.echo "Tagging '${sourceImageStreamRef}' as '${targetImageStreamRef}'"
-            openshift.tag(sourceImageStreamRef, targetImageStreamRef)
+            script.echo "Deleting temporary tag: '${m.metadata.name}:${tempImageTagName}'"
+            openshift.tag("${m.metadata.name}:${tempImageTagName}", '-d')
+            
+            //script.echo "Tagging '${sourceImageStreamRef}' as '${targetImageStreamRef}'"
+            //openshift.tag(sourceImageStreamRef, targetImageStreamRef)
         }
         script.echo "Applying Configurations"
         upserts.clear()
