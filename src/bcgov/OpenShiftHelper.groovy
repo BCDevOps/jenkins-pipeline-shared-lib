@@ -1013,8 +1013,11 @@ class OpenShiftHelper {
             script.echo "Importing Image '${sourceImageStreamRef}' as '${m.metadata.name}:${tempImageTagName}'"
             openshift.raw('import-image', "${m.metadata.name}:${tempImageTagName}", "--from=docker-registry.default.svc:5000/${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
 
-            script.echo "Tagging '${m.metadata.name}@${sourceImage}' as '${targetImageStreamRef}'"
-            openshift.tag("${m.metadata.name}@${sourceImage}", targetImageStreamRef)
+            script.echo "Importing Image '${m.metadata.name}:${tempImageTagName}' as '${targetImageStreamRef}'"
+            openshift.raw('import-image', "${targetImageStreamRef}", "--from=docker-registry.default.svc:5000/${m.metadata.namespace}/${m.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
+
+            //script.echo "Tagging '${m.metadata.name}@${sourceImage}' as '${targetImageStreamRef}'"
+            //openshift.tag("${m.metadata.name}@${sourceImage}", targetImageStreamRef)
 
             script.echo "Deleting temporary tag: '${m.metadata.name}:${tempImageTagName}'"
             openshift.tag("${m.metadata.name}:${tempImageTagName}", '-d')
