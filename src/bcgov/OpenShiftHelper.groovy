@@ -1012,15 +1012,19 @@ class OpenShiftHelper {
             //The 2 steps tagging (import and tag) is required to create a `ImageStreamImage` that is local to the target project
             
             //Workaround: https://github.com/openshift/origin/issues/14631
+            //Make sure there is at least one tag in the ImageStream, this tag is not used whatsover, and will be deleted
             script.echo "(workaround) Tagging '${sourceImageStreamRef}' as 'tmp-${tempImageTagName}'"
             openshift.tag(sourceImageStreamRef, "${m.metadata.name}:tmp-${tempImageTagName}")
 
+            //Import the source image to a temporary tag: Source Project and Destination Project may be different
             script.echo "Importing Image '${sourceImageStreamRef}' as '${m.metadata.name}:${tempImageTagName}'"
             openshift.raw('import-image', "${m.metadata.name}:${tempImageTagName}", "--from=docker-registry.default.svc:5000/${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
 
+            //Re-impot the source image from the temporary tag to another temporary tag: Source Project and Destination Project are the same
             script.echo "Importing Image '${m.metadata.name}:${tempImageTagName}' as '${m.metadata.name}:${temp2ImageTagName}'"
-            openshift.raw('import-image', "${m.metadata.name}:${temp2ImageTagName}", "--from=docker-registry.default.svc:5000/${deployCtx.projectName}/${m.metadata.name}@${tempImageTagName}", '--insecure=true', '--confirm=true')
+            openshift.raw('import-image', "${m.metadata.name}:${temp2ImageTagName}", "--from=docker-registry.default.svc:5000/${deployCtx.projectName}/${m.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
 
+            //Actually update the final tag based on the 2nd temporary imported Image
             script.echo "Tagging '${m.metadata.name}@${temp2ImageTagName}' as '${targetImageStreamRef}'"
             openshift.tag("${m.metadata.name}@${temp2ImageTagName}", targetImageStreamRef)
 
