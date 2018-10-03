@@ -1008,6 +1008,7 @@ class OpenShiftHelper {
             String sourceImageStreamRef="${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}"
             String targetImageStreamRef="${m.metadata.name}:${labels['env-name']}"
             String tempImageTagName="tmp-${labels['env-name']}"
+            String temp2ImageTagName="tmp2-${labels['env-name']}"
             //The 2 steps tagging (import and tag) is required to create a `ImageStreamImage` that is local to the target project
             
             //Workaround: https://github.com/openshift/origin/issues/14631
@@ -1017,15 +1018,18 @@ class OpenShiftHelper {
             script.echo "Importing Image '${sourceImageStreamRef}' as '${m.metadata.name}:${tempImageTagName}'"
             openshift.raw('import-image', "${m.metadata.name}:${tempImageTagName}", "--from=docker-registry.default.svc:5000/${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
 
-            script.echo "Importing Image '${m.metadata.name}:${tempImageTagName}' as '${targetImageStreamRef}'"
-            openshift.raw('import-image', "${targetImageStreamRef}", "--from=docker-registry.default.svc:5000/${deployCtx.projectName}/${m.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
+            script.echo "Importing Image '${m.metadata.name}:${tempImageTagName}' as '${m.metadata.name}:${temp2ImageTagName}'"
+            openshift.raw('import-image', "${m.metadata.name}:${temp2ImageTagName}", "--from=docker-registry.default.svc:5000/${deployCtx.projectName}/${m.metadata.name}@${tempImageTagName}", '--insecure=true', '--confirm=true')
 
-            //script.echo "Tagging '${m.metadata.name}@${sourceImage}' as '${targetImageStreamRef}'"
-            //openshift.tag("${m.metadata.name}@${sourceImage}", targetImageStreamRef)
+            script.echo "Tagging '${m.metadata.name}@${temp2ImageTagName}' as '${targetImageStreamRef}'"
+            openshift.tag("${m.metadata.name}@${temp2ImageTagName}", targetImageStreamRef)
 
             script.echo "Deleting temporary tag: '${m.metadata.name}:${tempImageTagName}'"
             openshift.tag("${m.metadata.name}:${tempImageTagName}", '-d')
             
+            script.echo "Deleting temporary tag: '${m.metadata.name}:${temp2ImageTagName}'"
+            openshift.tag("${m.metadata.name}:${temp2ImageTagName}", '-d')
+
             script.echo "Deleting temporary tag: '${m.metadata.name}:tmp-${tempImageTagName}'"
             openshift.tag("${m.metadata.name}:tmp-${tempImageTagName}", '-d')
 
