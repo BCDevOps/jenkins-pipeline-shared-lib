@@ -1010,6 +1010,10 @@ class OpenShiftHelper {
             String tempImageTagName="tmp-${labels['env-name']}"
             //The 2 steps tagging (import and tag) is required to create a `ImageStreamImage` that is local to the target project
             
+            //Workaround: https://github.com/openshift/origin/issues/14631
+            script.echo "(workaround) Tagging '${sourceImageStreamRef}' as 'tmp-${tempImageTagName}'"
+            openshift.tag(sourceImageStreamRef, "tmp-${tempImageTagName}")
+
             script.echo "Importing Image '${sourceImageStreamRef}' as '${m.metadata.name}:${tempImageTagName}'"
             openshift.raw('import-image', "${m.metadata.name}:${tempImageTagName}", "--from=docker-registry.default.svc:5000/${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
 
@@ -1022,6 +1026,9 @@ class OpenShiftHelper {
             script.echo "Deleting temporary tag: '${m.metadata.name}:${tempImageTagName}'"
             openshift.tag("${m.metadata.name}:${tempImageTagName}", '-d')
             
+            script.echo "Deleting temporary tag: '${m.metadata.name}:tmp-${tempImageTagName}'"
+            openshift.tag("${m.metadata.name}:tmp-${tempImageTagName}", '-d')
+
             //script.echo "Tagging '${sourceImageStreamRef}' as '${targetImageStreamRef}'"
             //openshift.tag(sourceImageStreamRef, targetImageStreamRef)
         }
