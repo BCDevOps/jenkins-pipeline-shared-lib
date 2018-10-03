@@ -1018,7 +1018,7 @@ class OpenShiftHelper {
             openshift.raw('import-image', "${m.metadata.name}:${tempImageTagName}", "--from=docker-registry.default.svc:5000/${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
 
             script.echo "Importing Image '${m.metadata.name}:${tempImageTagName}' as '${targetImageStreamRef}'"
-            openshift.raw('import-image', "${targetImageStreamRef}", "--from=docker-registry.default.svc:5000/${m.metadata.namespace}/${m.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
+            openshift.raw('import-image', "${targetImageStreamRef}", "--from=docker-registry.default.svc:5000/${deployCtx.projectName}/${m.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
 
             //script.echo "Tagging '${m.metadata.name}@${sourceImage}' as '${targetImageStreamRef}'"
             //openshift.tag("${m.metadata.name}@${sourceImage}", targetImageStreamRef)
