@@ -1026,7 +1026,7 @@ class OpenShiftHelper {
 
             //Actually update the final tag based on the 2nd temporary imported Image
             script.echo "Tagging '${m.metadata.name}@${temp2ImageTagName}' as '${targetImageStreamRef}'"
-            openshift.tag("${m.metadata.name}@${temp2ImageTagName}", targetImageStreamRef)
+            openshift.tag("${m.metadata.name}:${temp2ImageTagName}", targetImageStreamRef)
 
             script.echo "Deleting temporary tag: '${m.metadata.name}:${tempImageTagName}'"
             openshift.tag("${m.metadata.name}:${tempImageTagName}", '-d')
