@@ -871,13 +871,13 @@ class OpenShiftHelper {
             if (deployment.transient == true){
                 openshift.withCluster(){
                     openshift.withProject(deployment.projectName) {
-                        def result=openshift.delete((['all'] + labelsToArgs(deployment.labels)) as String[])
+                        def result=openshift.selector('all', deployment.labels).delete()
                         script.echo "Output:\n${result.out}"
 
                         def protectedSelector=openshift.selector('secret,configmap,pvc', deployment.labels)
                         if (protectedSelector.count() > 0) {
                             script.echo "Deleting: ${protectedSelector.names()}"
-                            result=openshift.delete((['secret,configmap,pvc'] + labelsToArgs(deployment.labels)) as String[])
+                            result=protectedSelector.delete()
                             script.echo "Output:\n${result.out}"
                         }
                     } // end withProject
