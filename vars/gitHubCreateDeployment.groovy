@@ -6,7 +6,7 @@ import com.cloudbees.jenkins.GitHubRepositoryName
 def call(script, environment) {
   def commitId = sh(returnStdout: true, script: 'git rev-parse HEAD')
   String gitUrl = script.scm.getUserRemoteConfigs()[0].getUrl()
-  GHRepository repository = GitHubRepositoryName.create(gitUrl).resolveOne()
+  GHRepository repository = GitHubRepositoryName.create(gitUrl.trim()).resolveOne()
   GHDeploymentBuilder builder = repository.createDeployment(commitId)
   builder.environment(environment)
   builder.autoMerge(false)
