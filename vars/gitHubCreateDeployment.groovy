@@ -1,6 +1,6 @@
 import bcgov.GitHubHelper
 
-def call(payload) {
+def call(script, payload) {
   def commitId = sh(returnStdout: true, script: 'git rev-parse HEAD')
-  return GitHubHelper.createDeployment(this, commitId, payload)
+  return GitHubHelper.createDeployment(script, commitId, payload)
 }
