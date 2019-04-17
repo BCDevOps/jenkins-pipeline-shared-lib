@@ -2,6 +2,7 @@ package bcgov;
 
 import org.jenkinsci.plugins.workflow.cps.CpsScript;
 import com.openshift.jenkins.plugins.OpenShiftDSL;
+import org.kohsuke.github.GHRepository
 
 class OpenShiftHelper {
     int logLevel=0
@@ -11,6 +12,13 @@ class OpenShiftHelper {
     static String ANNOTATION_ALLOW_CREATE='template.openshift.io.bcgov/create'
     static String ANNOTATION_ALLOW_UPDATE='template.openshift.io.bcgov/update'
 
+    @NonCPS
+    private String getLastSha1InPath(String gitURL, String head, String path) {
+        //if (path==null || path.length() == 0 ) return head
+        GHRepository repository=GitHubHelper.getGitHubRepository(gitURL)
+        return repository.queryCommits().pageSize(1).from(head).path(path).list().iterator().next().getSHA1();
+    }
+    
     private void loadMetadata(CpsScript script, Map metadata) {
         metadata.commitId = script.sh(returnStdout: true, script: 'git rev-parse HEAD').trim()
         metadata.isPullRequest=(script.env.CHANGE_ID != null && script.env.CHANGE_ID.trim().length()>0)
@@ -19,9 +27,10 @@ class OpenShiftHelper {
         metadata.buildBranchName = script.env.BRANCH_NAME;
         metadata.buildEnvName = 'bld'
         metadata.buildNamePrefix = "${metadata.appName}"
-
+        metadata.isPullRequestFromFork = false
 
         if (metadata.isPullRequest){
+            loadPullRequestMetadata(metadata, GitHubHelper.getPullRequest(script))
             metadata.pullRequestNumber=script.env.CHANGE_ID
             metadata.gitBranchRemoteRef = script.sh(returnStdout: true, script: "git ls-remote origin 'refs/pull/${script.env.CHANGE_ID}/*' | grep '${metadata.commitId}' | cut -f2").trim()
             metadata.buildEnvName="pr-${metadata.pullRequestNumber}"
@@ -31,17 +40,20 @@ class OpenShiftHelper {
     }
 
     private boolean allowCreate(Map newModel) {
-        return !PROTECTED_TYPES.contains(newModel.kind) || Boolean.parseBoolean(newModel.metadata?.annotations[ANNOTATION_ALLOW_CREATE]?:'false')==true
+        return !PROTECTED_TYPES.contains(newModel.kind) || Boolean.parseBoolean((newModel.metadata?.annotations?:[:])[ANNOTATION_ALLOW_CREATE]?:'false')==true
     }
 
     private boolean allowUpdate(Map newModel) {
-        return !PROTECTED_TYPES.contains(newModel.kind) || Boolean.parseBoolean(newModel.metadata?.annotations[ANNOTATION_ALLOW_UPDATE]?:'false')==true
+        return !PROTECTED_TYPES.contains(newModel.kind) || Boolean.parseBoolean((newModel.metadata?.annotations?:[:])[ANNOTATION_ALLOW_UPDATE]?:'false')==true
     }
 
     private boolean allowCreateOrUpdate(Map newModel, Map currentModel) {
         return (currentModel==null && allowCreate(newModel)) || (currentModel!=null  && allowUpdate(newModel))
     }
-
+    @NonCPS
+    private static void loadPullRequestMetadata(Map metadata, org.kohsuke.github.GHPullRequest pullRequest) {
+        metadata.isPullRequestFromFork = !pullRequest.getRepository().getFullName().equalsIgnoreCase(pullRequest.getHead().getRepository().getFullName())
+    }
     @NonCPS
     private static String toJsonString(Object object) {
         return groovy.json.JsonOutput.toJson(object)
@@ -58,6 +70,13 @@ class OpenShiftHelper {
             isTitleLine=false;
         }
         return ret;
+    }
+
+    @NonCPS
+    private static String stackTraceAsString(Throwable t) {
+        StringWriter sw = new StringWriter();
+        t.printStackTrace(new PrintWriter(sw));
+        return sw.toString()
     }
 
     @NonCPS
@@ -124,7 +143,7 @@ class OpenShiftHelper {
         def selector=openshift.selector('is,bc,secret,configmap,dc,svc,route', labels)
 
         if (selector.count()>0) {
-            for (Map model : selector.objects(exportable: true)) {
+            for (Map model : selector.objects(exportable:false)) {
                 models[key(model)] = model
             }
         }
@@ -138,27 +157,34 @@ class OpenShiftHelper {
         if (selector.count()>0) {
             for (Map bc : selector.objects()) {
                 String buildName = "Build/${bc.metadata.name}-${bc.status.lastVersion}"
-                Map build = openshift.selector(buildName).object()
-                buildOutput[buildName] = [
-                        'kind': build.kind,
-                        'metadata': ['name':build.metadata.name],
-                        'spec': [ 'revision':build.spec.revision ],
-                        'output': [
-                                'to': [
-                                        'kind': build.spec.output.to.kind,
-                                        'name': build.spec.output.to.name
-                                ]
-                        ],
-                        'status': ['phase': build.status.phase]
-                ]
+                Map build=null
 
-                if (isBuildSuccesful(build)) {
-                    buildOutput["${build.spec.output.to.kind}/${build.spec.output.to.name}"] = [
-                            'kind': build.spec.output.to.kind,
-                            'metadata': ['name':build.spec.output.to.name],
-                            'imageDigest': build.status.output.to.imageDigest,
-                            'outputDockerImageReference': build.status.outputDockerImageReference
+                if (openshift.selector(buildName).exists()){
+                    build = openshift.selector(buildName).object()
+                }
+
+                if (build!=null) {
+                    buildOutput[buildName] = [
+                            'kind'    : build.kind,
+                            'metadata': ['name': build.metadata.name],
+                            'spec'    : ['revision': build.spec.revision],
+                            'output'  : [
+                                    'to': [
+                                            'kind': build.spec.output.to.kind,
+                                            'name': build.spec.output.to.name
+                                    ]
+                            ],
+                            'status'  : ['phase': build.status.phase]
                     ]
+
+                    if (isBuildSuccesful(build)) {
+                        buildOutput["${build.spec.output.to.kind}/${build.spec.output.to.name}"] = [
+                                'kind'                      : build.spec.output.to.kind,
+                                'metadata'                  : ['name': build.spec.output.to.name],
+                                'imageDigest'               : build.status.output.to.imageDigest,
+                                'outputDockerImageReference': build.status.outputDockerImageReference
+                        ]
+                    }
                 }
 
                 buildOutput["${key(bc)}"] = [
@@ -186,17 +212,32 @@ class OpenShiftHelper {
         }
 
         boolean doCheck=true
+        int failures=0
+
+        //wait for replication controllers to finish
         while(doCheck) {
-            openshift.selector('rc', rcLabels).watch {
-                boolean allDone = true
-                it.withEach { item ->
-                    def object = item.object()
-                    script.echo "${key(object)} - ${getReplicationControllerStatus(object)}"
-                    if (!isReplicationControllerComplete(object)) {
-                        allDone = false
+            try {
+                script.timeout(5) {
+                    openshift.selector('rc', rcLabels).watch {
+                        boolean allDone = true
+                        it.withEach { item ->
+                            def object = item.object()
+                            script.echo "${key(object)} - ${getReplicationControllerStatus(object)}"
+                            if (!isReplicationControllerComplete(object)) {
+                                allDone = false
+                            }
+                        }
+                        return allDone
                     }
                 }
-                return allDone
+            }catch (ex){
+                failures++
+                script.echo "${stackTraceAsString(ex)}"
+                //after 10 failures, give up
+                if (failures > 10){
+                    throw ex
+                }
+                continue
             }
 
             script.sleep 5
@@ -209,19 +250,35 @@ class OpenShiftHelper {
             }
         }
 
+        //wait for pods to startup
         doCheck=true
+        failures = 0
         while(doCheck) {
-            openshift.selector('dc', labels).watch {
-                boolean allDone = true
-                it.withEach { item ->
-                    def dc = item.object()
-                    script.echo "${key(dc)} - desired:${dc?.status?.replicas}  ready:${dc?.status?.readyReplicas} available:${dc?.status?.availableReplicas}"
-                    if (!(dc?.status?.replicas == dc?.status?.readyReplicas &&  dc?.status?.replicas == dc?.status?.availableReplicas)) {
-                        allDone = false
+            try {
+                //5 minutes timeout before restarting watch
+                script.timeout(5) {
+                    openshift.selector('dc', labels).watch {
+                        boolean allDone = true
+                        it.withEach { item ->
+                            def dc = item.object()
+                            script.echo "${key(dc)} - desired:${dc?.status?.replicas}  ready:${dc?.status?.readyReplicas} available:${dc?.status?.availableReplicas}"
+                            if (!(dc?.status?.replicas == dc?.status?.readyReplicas && dc?.status?.replicas == dc?.status?.availableReplicas)) {
+                                allDone = false
+                            }
+                        }
+                        return allDone
                     }
                 }
-                return allDone
+            } catch (ex){
+                failures++
+                script.echo "${stackTraceAsString(ex)}"
+                //after 10 failures, give up
+                if (failures > 10){
+                    throw ex
+                }
+                continue
             }
+
             script.sleep 5
             doCheck=false
             for (Map dc : openshift.selector('dc', labels).objects()){
@@ -240,24 +297,48 @@ class OpenShiftHelper {
         while(doCheck) {
             openshift.selector('builds', labels).watch {
                 boolean allDone = true
-                it.withEach { item ->
-                    def object = item.object()
+                /*
+                for (Map object:it.objects(exportable:true)){
                     if (!isBuildComplete(object)) {
                         script.echo "${key(object)} - ${object.status.phase}"
                         allDone = false
                     }
                 }
+                */
+                
+                it.withEach { item ->
+                    try {
+                        def object = item.object()
+                        if (!isBuildComplete(object)) {
+                            script.echo "${key(object)} - ${object.status.phase}"
+                            allDone = false
+                        }
+                    }catch (ex){
+                        script.echo "${stackTraceAsString(ex)}"
+                        //This can happen when the script waits for so long
+                        // that a build object may just have been pruned/deleted
+                        return false
+                    }
+                }
+                
                 return allDone
             }
             script.sleep 5
             doCheck=false
-            for (Map build:openshift.selector('builds', labels).objects()){
-                if (!isBuildComplete(build)) {
-                    doCheck=true
-                    break
-                }
+            try {
+                for (Map build:openshift.selector('builds', labels).objects()){
+                    if (!isBuildComplete(build)) {
+                        doCheck = true
+                        break
+                    }
+                } //end for
+            }catch (ex){
+                script.echo "${stackTraceAsString(ex)}"
+                //This can happen when the script waits for so long
+                // that a build object may just have been pruned/deleted
+                doCheck = true
             }
-        }
+        } //end while
         //openshift.verbose(false)
     }
 
@@ -347,10 +428,16 @@ class OpenShiftHelper {
             }
         }
 
-        script.echo "BRANCH_NAME=${script.env.BRANCH_NAME}\nCHANGE_ID=${script.env.CHANGE_ID}\nCHANGE_TARGET=${script.env.CHANGE_TARGET}\nBUILD_URL=${script.env.BUILD_URL}"
+        script.echo "BRANCH_NAME=${script.env.BRANCH_NAME}\nCHANGE_ID=${script.env.CHANGE_ID}\nCHANGE_TARGET=${script.env.CHANGE_TARGET}\nBUILD_URL=${script.env.BUILD_URL}\nisPullRequestFromFork"
         script.echo "absoluteUrl=${script.currentBuild.absoluteUrl}"
 
+        script.sh(returnStdout: false, script: "git log --pretty=oneline -20")
+        script.sh(returnStdout: false, script: "git rev-list -20 HEAD")
+
+
         loadMetadata(script, context)
+
+        script.echo "isPullRequestFromFork:${context.isPullRequestFromFork}"
 
         new GitHubHelper().createCommitStatus(script, context.commitId, 'PENDING', "${script.env.BUILD_URL}", 'Build', 'continuous-integration/jenkins/build')
 
@@ -365,9 +452,12 @@ class OpenShiftHelper {
                 script.echo "Connected to project '${openshift.project()}' as user '${openshift.raw('whoami').out.tokenize()[0]}'"
                 def newObjects = loadObjectsFromTemplate(openshift, context.templates.build, context, 'build')
                 def currentObjects = loadObjectsByLabel(openshift, labels)
-
+                //script.echo "${currentObjects}"
                 for (Map m : newObjects.values()){
                     if ('BuildConfig'.equalsIgnoreCase(m.kind)){
+                        // apply last commit id/hash to spec.source.git.ref
+                        // this ensure that a build will get triggered only when there has been changes
+                        
                         String commitId = context.commitId
                         String contextDir=null
 
@@ -379,19 +469,75 @@ class OpenShiftHelper {
                             contextDir=contextDir.substring(1)
                         }
 
-                        if (contextDir!=null){
-                            commitId=script.sh(returnStdout: true, script: "git rev-list -1 HEAD -- '${contextDir}'").trim()
-                        }
                         if (!m.metadata.annotations) m.metadata.annotations=[:]
-                        if (m.spec.source.git.ref) m.metadata.annotations['source/spec.source.git.ref']=m.spec.source.git.ref
-
-                        m.metadata.annotations['spec.source.git.ref']=commitId
-                        //m.spec.source.git.ref=commitId
-                        m.spec.source.git.ref=context.gitBranchRemoteRef
+                        if (!m.metadata.labels) m.metadata.labels=[:]
+                        m.metadata.annotations['source.git.commit']=commitId
+                        
+                        if (m.spec.source?.git?.uri){
+                            if (m.spec.source.git.uri.equalsIgnoreCase(context.gitRepoUrl)){
+                                commitId=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, contextDir?:'')
+                                if (m.spec.source.git.ref) m.metadata.annotations['source/spec.source.git.ref']=m.spec.source.git.ref
+                                m.metadata.annotations['source.git.ref']=context.gitBranchRemoteRef
+                                m.metadata.annotations['source.git.head']=getLastSha1InPath(m.spec.source.git.uri, context.gitBranchRemoteRef, '')
+                                m.metadata.annotations['source.git.commit']=commitId
+                                m.spec.source.git.ref=commitId
+                                if (context.isPullRequestFromFork) {
+                                    m.metadata.annotations['source.git.commit']=m.metadata.annotations['source.git.head']
+                                    m.spec.source.git.ref=context.gitBranchRemoteRef
+                                }
+                            }else{
+                                commitId=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, contextDir?:'')
+                                m.metadata.annotations['source.git.ref']=m.spec.source.git.ref
+                                m.metadata.annotations['source.git.head']=getLastSha1InPath(m.spec.source.git.uri, m.spec.source.git.ref, '')
+                                m.metadata.annotations['source.git.commit']=commitId
+                                m.spec.source.git.ref=commitId
+                            }
+                        }
+                        //m.metadata.labels['git-ref']=m.metadata.annotations['source.git.ref']
+                        m.metadata.labels['git-commit']=m.metadata.annotations['source.git.commit']
+                        //m.spec.source.git.ref=m.metadata.annotations['source.git.commit']
+                        
                         m.spec.runPolicy = 'SerialLatestOnly'
-                        script.echo "${key(m)} - ${contextDir?:'/'} @ ${m.spec.source.git.ref}  (${commitId})"
-                    }
-                }
+                        m.spec.output.to.name=m.spec.output.to.name.tokenize(':')[0]+':'+context.buildEnvName
+                        if (m.spec.source?.git?.uri){
+                            script.echo "${key(m)} - ${m.spec.source.git.uri}#${m.spec?.source?.git?.ref} @ ${m.metadata.annotations['source.git.head']} - /${m?.spec?.source?.contextDir?:''} @ ${m.metadata.annotations['source.git.commit']}"
+                        }else{
+                            script.echo "${key(m)} - @ ${m.metadata.annotations['source.git.commit']}"
+                        }
+                        
+                        // retrieve existing spec.triggers.imageChange.lastTriggeredImageID
+                        // this will ensure that builds won't be triggered upon updating BuildConfig
+                        if (m.spec?.triggers != null ){
+                            Map current = currentObjects[key(m)]
+                            if (current!=null){
+                                //script.echo "${key(m)} - current triggers -> ${current.spec.triggers}"
+                                //script.echo "${key(m)} - new triggers -> ${m.spec.triggers}"
+                                for (Map t1:m.spec.triggers){
+                                    if ('ImageChange'.equalsIgnoreCase(t1.type)){
+                                        if (current.spec.triggers != null){
+                                            for (Map t2:current.spec.triggers){
+                                                if ('ImageChange'.equalsIgnoreCase(t2.type)){
+                                                    if (
+                                                        (t1.imageChange?.from == null && t2.imageChange?.from == null) ||
+                                                        (
+                                                            (t1.imageChange?.from != null && t2.imageChange?.from != null) &&
+                                                            t1.imageChange.from.kind.equalsIgnoreCase(t2.imageChange.from.kind) &&
+                                                            t1.imageChange.from.name.equalsIgnoreCase(t2.imageChange.from.name)
+                                                        )
+                                                    ){
+                                                        t1.imageChange = t1.imageChange?:[:]
+                                                        t1.imageChange.lastTriggeredImageID=t2.imageChange.lastTriggeredImageID
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            //script.echo "${key(m)} - triggers -> ${m.spec.triggers}"
+                        } //end fix (m.spec.triggers)
+                    } //end if
+                } // end for
 
                 def initialBuildConfigState=loadBuildConfigStatus(openshift, labels)
 
@@ -420,20 +566,40 @@ class OpenShiftHelper {
                             newBuild = openshift.selector(key(item)).startBuild()
                         }else{
                             Map m=newObjects[key(item)]
-                            String newestCommit=m.metadata.annotations['spec.source.git.ref']
-                            String oldestCommit=lastBuild.spec.revision.git.commit
-                            if (!newestCommit.equalsIgnoreCase(oldestCommit)) {
-                                //git rev-list [newer] ^[older] --count
-                                int distance = Integer.parseInt(script.sh(returnStdout: true, script: "git rev-list ${newestCommit} ^${oldestCommit} --count").trim())
-                                script.echo "${distance} commits between ${oldestCommit} (oldest)  and ${newestCommit} (newest)"
-                                if (distance > 0) {
-                                    script.echo "   Starting a new build because the last one (${key(lastBuild)}) was outdated"
-                                    newBuild=openshift.selector(key(item)).startBuild()
-                                    startedNewBuilds = true
+                            if (m!=null) {
+                                if (lastBuild.spec?.revision?.git?.commit !=null){
+                                    if (m.metadata?.labels['git-commit'] != null && !m.metadata.labels['git-commit'].equalsIgnoreCase(lastBuild.spec?.revision?.git?.commit)) {
+                                        script.echo "   Starting a new build because the last commit (${lastBuild.spec?.revision?.git?.commit}) does not match latest one (${m.metadata.labels['git-commit']})"
+                                        newBuild = openshift.selector(key(item)).startBuild()
+                                    } else if (m.spec.source?.git?.uri) {
+                                        String newestCommit = m.metadata.annotations['spec.source.git.ref']
+                                        String oldestCommit = lastBuild.spec?.revision?.git?.commit
+
+                                        if (newestCommit != null && !newestCommit.equalsIgnoreCase(oldestCommit)) {
+                                            if (context.isPullRequestFromFork) {
+                                                //git rev-list [newer] ^[older] --count
+                                                int distance = Integer.parseInt(script.sh(returnStdout: true, script: "git rev-list ${newestCommit} ^${oldestCommit} --count").trim())
+                                                script.echo "${distance} commits between ${oldestCommit} (oldest)  and ${newestCommit} (newest)"
+                                                if (distance > 0) {
+                                                    script.echo "   Starting a new build because the last one (${key(lastBuild)}) was outdated"
+                                                    newBuild = openshift.selector(key(item)).startBuild()
+                                                    startedNewBuilds = true
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        script.echo "   Not starting a build (relying on ConfigChange/ImageChange triggers)"
+                                        //startedNewBuilds = true
+                                    }
+                                }else{
+                                    script.echo "   This build is not based on a GIT repository (relying on ConfigChange/ImageChange triggers)"
                                 }
+                                //git rev-list e71492589b94239576a6397997c29e6cb5b55fc8 ^e71492589b94239576a6397997c29e6cb5b55fc8 --count
+                            }else{
+                                script.echo "   ${key(item)} was not found among objects managed by the template(s). I am guessing it was removed, eh?"
                             }
-                            //git rev-list e71492589b94239576a6397997c29e6cb5b55fc8 ^e71492589b94239576a6397997c29e6cb5b55fc8 --count
                         }
+
                         if (newBuild!=null){
                             startedNewBuilds = true
                             script.echo "New build started - ${newBuild.name()}"
@@ -480,14 +646,27 @@ class OpenShiftHelper {
 
                 openshift.selector( 'is', labels).withEach {
                     def iso=it.object()
-
+                    //script.echo "is --> ${iso}"
+                    def tags=[:]
+                    for (Map tag:iso.status.tags){
+                        tags[tag.tag]=[
+                            'items':[tag.items[0]]
+                        ]
+                    }
+                    //script.echo "is.status.tags --> ${tags}"
+                    
                     buildOutput["${key(iso)}"] = [
                             'kind': iso.kind,
                             'metadata': ['name':iso.metadata.name, 'namespace':iso.metadata.namespace],
-                            'labels':iso.metadata.labels
+                            'labels':iso.metadata.labels,
+                            'status':[
+                                'tags':tags
+                            ]
                     ]
                     String baseName=getImageStreamBaseName(iso)
-                    buildOutput["BaseImageStream/${baseName}"]=['ImageStream':key(iso)]
+                    buildOutput["BaseImageStream/${baseName}"]=[
+                        'ImageStream':key(iso)
+                    ]
                 }
 
                 context['build'] = ['status':buildOutput, 'projectName':"${openshift.project()}"]
@@ -529,12 +708,12 @@ class OpenShiftHelper {
                     patches.add(o)
                 }else{
                     //script.echo "Skipping '${o.kind}/${o.metadata.name}' (Already Exists)"
-                    def newObject=o
-                    if (newObject.spec && newObject.spec.tags){
-                        newObject.spec.remove('tags')
-                    }
+                    //def newObject=o
+                    //if (newObject.spec && newObject.spec.tags){
+                    //    newObject.spec.remove('tags')
+                    //}
                     //script.echo "Modified '${o.kind}/${o.metadata.name}' = ${newObject}"
-                    updates.add(newObject)
+                    updates.add(o)
                 }
             }
 
@@ -542,7 +721,7 @@ class OpenShiftHelper {
 
         if (creations.size()>0){
             script.echo "Creating ${creations.size()} objects"
-            openshift.apply(creations);
+            openshift.apply(creations, '');
         }
         
         if (patches.size()>0){
@@ -610,12 +789,12 @@ class OpenShiftHelper {
                                         errors.add("Missing 'secret/${secretName}'")
                                     }
                                 }
-                            }else if ("Secret".equalsIgnoreCase(m.kind)) {
+                            }else if ("Secret".equalsIgnoreCase(m.kind) || "ConfigMap".equalsIgnoreCase(m.kind)) {
                                 String sourceName=annotations[ANNOTATION_AS_COPY_OF+".${envKeyName}"]?:annotations[ANNOTATION_AS_COPY_OF]
                                 if (sourceName!=null){
-                                    def selector = openshift.selector("secrets/${sourceName}")
+                                    def selector = openshift.selector("${m.kind}/${sourceName}")
                                     if (selector.count() == 0) {
-                                        errors.add("Missing 'secret/${sourceName}'")
+                                        errors.add("Missing '${m.kind}/${sourceName}'")
                                     }
                                 }
                             }
@@ -646,6 +825,8 @@ class OpenShiftHelper {
         Map deployCfg = createDeployContext(script, context, envKeyName)
         context['deploy'] = deployCfg
         context['DEPLOY_ENV_NAME'] = envKeyName
+        context.deployments = context.deployments?:[:]
+        context.deployments[envKeyName] = deployCfg
     }
 
     private void clearDeploymentContext(CpsScript script, OpenShiftDSL openshift, Map context, String envKeyName) {
@@ -690,13 +871,13 @@ class OpenShiftHelper {
             if (deployment.transient == true){
                 openshift.withCluster(){
                     openshift.withProject(deployment.projectName) {
-                        def result=openshift.delete((['all'] + labelsToArgs(deployment.labels)) as String[])
+                        def result=openshift.selector('all', deployment.labels).delete()
                         script.echo "Output:\n${result.out}"
 
-                        def protectedSelector=openshift.selector('secret,configmap', deployment.labels)
+                        def protectedSelector=openshift.selector('secret,configmap,pvc', deployment.labels)
                         if (protectedSelector.count() > 0) {
                             script.echo "Deleting: ${protectedSelector.names()}"
-                            result=openshift.delete((['secret,configmap'] + labelsToArgs(deployment.labels)) as String[])
+                            result=protectedSelector.delete()
                             script.echo "Output:\n${result.out}"
                         }
                     } // end withProject
@@ -823,11 +1004,41 @@ class OpenShiftHelper {
         for (Map m : upserts) {
             String sourceImageStreamKey=context.build.status["BaseImageStream/${getImageStreamBaseName(m)}"]['ImageStream']
             Map sourceImageStream = context.build.status[sourceImageStreamKey]
-            String sourceImageStreamRef="${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}:latest"
+            String sourceImage=sourceImageStream.status.tags[context.buildEnvName].items[0].image
+            String sourceImageStreamRef="${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}"
             String targetImageStreamRef="${m.metadata.name}:${labels['env-name']}"
+            String tempImageTagName="tmp-${labels['env-name']}"
+            String temp2ImageTagName="tmp2-${labels['env-name']}"
+            //The 2 steps tagging (import and tag) is required to create a `ImageStreamImage` that is local to the target project
+            
+            //Workaround: https://github.com/openshift/origin/issues/14631
+            //Make sure there is at least one tag in the ImageStream, this tag is not used whatsover, and will be deleted
+            script.echo "(workaround) Tagging '${sourceImageStreamRef}' as 'tmp-${tempImageTagName}'"
+            openshift.tag(sourceImageStreamRef, "${m.metadata.name}:tmp-${tempImageTagName}")
 
-            script.echo "Tagging '${sourceImageStreamRef}' as '${targetImageStreamRef}'"
-            openshift.tag(sourceImageStreamRef, targetImageStreamRef)
+            //Import the source image to a temporary tag: Source Project and Destination Project may be different
+            script.echo "Importing Image '${sourceImageStreamRef}' as '${m.metadata.name}:${tempImageTagName}'"
+            openshift.raw('import-image', "${m.metadata.name}:${tempImageTagName}", "--from=docker-registry.default.svc:5000/${sourceImageStream.metadata.namespace}/${sourceImageStream.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
+
+            //Re-impot the source image from the temporary tag to another temporary tag: Source Project and Destination Project are the same
+            script.echo "Importing Image '${m.metadata.name}:${tempImageTagName}' as '${m.metadata.name}:${temp2ImageTagName}'"
+            openshift.raw('import-image', "${m.metadata.name}:${temp2ImageTagName}", "--from=docker-registry.default.svc:5000/${deployCtx.projectName}/${m.metadata.name}@${sourceImage}", '--insecure=true', '--confirm=true')
+
+            //Actually update the final tag based on the 2nd temporary imported Image
+            script.echo "Tagging '${m.metadata.name}@${temp2ImageTagName}' as '${targetImageStreamRef}'"
+            openshift.tag("${m.metadata.name}:${temp2ImageTagName}", targetImageStreamRef)
+
+            script.echo "Deleting temporary tag: '${m.metadata.name}:${tempImageTagName}'"
+            openshift.tag("${m.metadata.name}:${tempImageTagName}", '-d')
+            
+            script.echo "Deleting temporary tag: '${m.metadata.name}:${temp2ImageTagName}'"
+            openshift.tag("${m.metadata.name}:${temp2ImageTagName}", '-d')
+
+            script.echo "Deleting temporary tag: '${m.metadata.name}:tmp-${tempImageTagName}'"
+            openshift.tag("${m.metadata.name}:tmp-${tempImageTagName}", '-d')
+
+            //script.echo "Tagging '${sourceImageStreamRef}' as '${targetImageStreamRef}'"
+            //openshift.tag(sourceImageStreamRef, targetImageStreamRef)
         }
         script.echo "Applying Configurations"
         upserts.clear()
@@ -852,8 +1063,8 @@ class OpenShiftHelper {
             }else{
                 String sourceName=annotations[ANNOTATION_AS_COPY_OF+".${deployCtx.envKeyName}"]?:annotations[ANNOTATION_AS_COPY_OF]
                 if (sourceName!=null && sourceName.length()>0) {
-                    script.echo "Creating a copy of '${sourceName}' as '${key(m)}'"
-                    def selector = openshift.selector("secrets/${sourceName}")
+                    script.echo "Creating a copy of '${m.kind}/${sourceName}' as '${key(m)}'"
+                    def selector = openshift.selector("${m.kind}/${sourceName}")
                     if (selector.count() == 1) {
                         Map sourceModel=selector.object(exportable:true);
                         sourceModel.metadata.name=m.metadata.name
@@ -875,12 +1086,12 @@ class OpenShiftHelper {
 
         waitForDeploymentsToComplete(script, openshift, labels)
 
-        openshift.selector('route', labels).withEach {
+        openshift.selector('route', labels + ['frontend':'true']).withEach {
             Map route= it.object()
             if (route.spec.tls){
-                deployCtx['environmentUrl']= "https://${route.spec.host}/"
+                deployCtx['environmentUrl']= "https://${route.spec.host}${route.spec.path?:'/'}"
             }else{
-                deployCtx['environmentUrl']= "http://${route.spec.host}/"
+                deployCtx['environmentUrl']= "http://${route.spec.host}${route.spec.path?:'/'}"
             }
         }
 

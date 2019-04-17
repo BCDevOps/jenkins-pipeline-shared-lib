@@ -22,7 +22,7 @@ def call(body) {
 
 
     properties([
-            buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '20')),
+            buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '10')),
             durabilityHint('MAX_SURVIVABILITY'),
             parameters([string(defaultValue: '', description: '', name: 'run_stages')])
     ])
@@ -37,7 +37,7 @@ def call(body) {
     }
 
     stage('Build') {
-        node('master') {
+        node('build') {
             checkout scm
             new OpenShiftHelper().build(this, context)
             if ("master".equalsIgnoreCase(env.CHANGE_TARGET)) {
@@ -50,7 +50,7 @@ def call(body) {
 
         if ("DEV".equalsIgnoreCase(stageDeployName) || "master".equalsIgnoreCase(env.CHANGE_TARGET)) {
             stage("Readiness - ${stageDeployName}") {
-                node('master') {
+                node('build') {
                     new OpenShiftHelper().waitUntilEnvironmentIsReady(this, context, envKeyName)
                 }
             }
@@ -66,7 +66,7 @@ def call(body) {
 
         if ("DEV".equalsIgnoreCase(stageDeployName) || "master".equalsIgnoreCase(env.CHANGE_TARGET)){
             stage("Deploy - ${stageDeployName}") {
-                node('master') {
+                node('build') {
                     new OpenShiftHelper().deploy(this, context, envKeyName)
                 }
             }

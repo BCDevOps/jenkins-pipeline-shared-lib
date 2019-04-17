@@ -10,8 +10,20 @@ import com.cloudbees.jenkins.GitHubRepositoryName
 *   - https://github.com/jenkinsci/github-plugin/blob/master/src/main/java/com/cloudbees/jenkins/GitHubRepositoryName.java
 * */
 class GitHubHelper {
+
+    static String getRepositoryUrl(CpsScript script){
+        return script.scm.getUserRemoteConfigs()[0].getUrl()
+    }
+
     static GHRepository getGitHubRepository(CpsScript script){
         return getGitHubRepository(script.scm.getUserRemoteConfigs()[0].getUrl())
+    }
+
+    @NonCPS
+    private static String stackTraceAsString(Throwable t) {
+        StringWriter sw = new StringWriter();
+        t.printStackTrace(new PrintWriter(sw));
+        return sw.toString()
     }
 
     @NonCPS
@@ -28,7 +40,7 @@ class GitHubHelper {
     }
 
     @NonCPS
-    static boolean mergeAndClosePullRequest(String repositoryUrl, int prNumber){
+    static boolean mergeAndClosePullRequest(String repositoryUrl, int prNumber, String mergeMethod){
         GHRepository repo=getGitHubRepository(repositoryUrl)
         GHPullRequest pullRequest = repo.getPullRequest(prNumber)
         Boolean mergeable = pullRequest.getMergeable()
@@ -38,15 +50,15 @@ class GitHubHelper {
 
         if (state != GHIssueState.CLOSED) {
             GHCommitPointer head = pullRequest.getHead()
-            if (pullRequest.getRepository().getFullName().equalsIgnoreCase(head.getRepository().getFullName())) {
-                if (!pullRequest.isMerged()) {
-                    if (mergeable != null && mergeable.booleanValue() == true) {
-                        pullRequest.merge("Merged PR-${prNumber}", head.getSha(), GHPullRequest.MergeMethod.MERGE)
-                    } else {
-                        doClose = false
-                    }
+            if (!pullRequest.isMerged()) {
+                if (mergeable != null && mergeable.booleanValue() == true) {
+                    pullRequest.merge("Merged PR-${prNumber}", head.getSha(), GHPullRequest.MergeMethod.valueOf(mergeMethod.toUpperCase()))
+                } else {
+                    doClose = false
                 }
+            }
 
+            if (doClose && pullRequest.getRepository().getFullName().equalsIgnoreCase(head.getRepository().getFullName())) {
                 if (head.getRef() != null) {
                     GHRef headRef = repo.getRef('heads/' + head.getRef())
                     if (headRef != null) {
@@ -54,6 +66,7 @@ class GitHubHelper {
                     }
                 }
             }
+
             if (doClose){
                 pullRequest.close()
                 ret = true
@@ -64,9 +77,35 @@ class GitHubHelper {
 
         return ret
     }
-
     static boolean mergeAndClosePullRequest(CpsScript script) {
-        return mergeAndClosePullRequest(script.scm.getUserRemoteConfigs()[0].getUrl(), Integer.parseInt(script.env.CHANGE_ID))
+        return mergeAndClosePullRequest(script, 'merge')
+    }
+    static boolean mergeAndClosePullRequest(CpsScript script, String mergeMethod) {
+        try {
+            return mergeAndClosePullRequest(getRepositoryUrl(script), Integer.parseInt(script.env.CHANGE_ID), mergeMethod)
+        }catch (ex){
+            //This need to be done because the github API does NOT return serializable Exceptions
+            script.echo "Original Stack Trace:\n${stackTraceAsString(ex)}"
+            throw new IOException(ex.message)
+        }
+    }
+
+    static void commentOnPullRequest(CpsScript script, String comment) {
+        try {
+            commentOnPullRequest(getRepositoryUrl(script), Integer.parseInt(script.env.CHANGE_ID), comment)
+        }catch (ex){
+            //This need to be done because the github API does NOT return serializable Exceptions
+            script.echo "Original Stack Trace:\n${stackTraceAsString(ex)}"
+            throw new IOException(ex.message)
+        }
+    }
+
+    @NonCPS
+    static void commentOnPullRequest(String repositoryUrl, int pullRequestNumber, String comment) {
+        GHRepository repo=getGitHubRepository(repositoryUrl)
+        GHPullRequest pullRequest = repo.getPullRequest(pullRequestNumber)
+        pullRequest.comment(comment)
+
     }
 
     static GHDeploymentBuilder createDeployment(CpsScript script, String ref) {
@@ -160,14 +199,14 @@ class GitHubHelper {
         return createDeploymentStatus(script.scm.getUserRemoteConfigs()[0].getUrl(), deploymentId, statusName, config)
     }
     @NonCPS
-    void createCommitStatus(String url, String sha1, String statusName, String targetUrl, String description, String context) {
+    static void createCommitStatus(String url, String sha1, String statusName, String targetUrl, String description, String context) {
         def ghRepo=getGitHubRepository(url)
         def ghCommitState=GHCommitState.valueOf(statusName)
 
         ghRepo.createCommitStatus(sha1, ghCommitState, targetUrl, description, context)
     }
 
-    void createCommitStatus(CpsScript script, String ref, String statusName, String targetUrl, String description, String context) {
+    static void createCommitStatus(CpsScript script, String ref, String statusName, String targetUrl, String description, String context) {
         createCommitStatus(script.scm.getUserRemoteConfigs()[0].getUrl() as String, ref, statusName, targetUrl, description, context)
     }
 }
