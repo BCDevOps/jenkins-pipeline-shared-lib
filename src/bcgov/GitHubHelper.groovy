@@ -184,7 +184,7 @@ class GitHubHelper {
         def ghRepo=getGitHubRepository(url)
         def ghDeploymentState=GHDeploymentState.valueOf(statusName)
 
-        def ghDeploymentStatus=ghRepo.root.retrieve().to(ghRepo.getApiTailUrl("deployments/")  + deploymentId, GHDeployment.class).wrap(ghRepo).createStatus(ghDeploymentState)
+        def ghDeploymentStatus=ghRepo.getDeployment(deploymentId).createStatus(ghDeploymentState)
 
         if (deploymentStatusConfig.description){
             ghDeploymentStatus.description(deploymentStatusConfig.description)
